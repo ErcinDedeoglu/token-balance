@@ -1,8 +1,8 @@
 {
   "result": "passed",
-  "growth": "kit",
+  "growth": "none",
   "counts": {
-    "added": 23,
+    "added": 0,
     "modified": 0,
     "deleted": 0,
     "moved": 0
