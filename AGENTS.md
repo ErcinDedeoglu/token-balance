@@ -12,6 +12,7 @@
 | Lint | n/a |
 | Typecheck | n/a |
 | Build | n/a |
+| Quality | `.githooks/check-quality.sh` |
 | Agent kit | `tooling/agent-kit/check.sh` |
 
 Leave `n/a` until the command exists and has been run once. Never guess. Agent kit is not `n/a`.
@@ -50,6 +51,7 @@ These are gates, not suggestions. Git pre-commit and the OpenCode plugin enforce
 - Edit generated or vendored trees
 - Duplicate docs into this file
 - Auto-write rules here without user approval
+- Name files or folders `utils`, `helpers`, `common`, `misc`
 
 ## Memory loop
 

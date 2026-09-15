@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT=$(git rev-parse --show-toplevel)
+"$ROOT/.githooks/check-quality.sh"
 export AGENT_KIT_NO_WRITE=1
 exec "$ROOT/tooling/agent-kit/check.sh" --no-write "$ROOT"

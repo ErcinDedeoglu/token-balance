@@ -19,7 +19,7 @@ Index only. Keep ≤200 lines / 25 KB. Details live in linked files. Memory is a
 
 ## Lessons
 
-_None yet._
+- [control-files-need-nested-agents](lessons/quality/control-files-need-nested-agents.md) — quality/nested-agents-before-top-level-files — `quality/` still needs nested AGENTS.md
 
 ## Patterns
 
