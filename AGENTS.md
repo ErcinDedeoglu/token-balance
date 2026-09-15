@@ -21,6 +21,7 @@ Leave `n/a` until the command exists and has been run once. Never guess. Agent k
 
 | Need | Read |
 |------|------|
+| Design | `docs/design/` |
 | Quality | `docs/QUALITY.md` |
 | Growth | `docs/GROWTH.md` |
 | Memory index | `memory/MEMORY.md` |

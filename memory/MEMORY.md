@@ -14,12 +14,13 @@ Index only. Keep ≤200 lines / 25 KB. Details live in linked files. Memory is a
 ## Project
 
 - Name: token-balance
-- Stack: n/a
-- Constraints: n/a
+- Stack: n/a (Rust 2024 + ratatui locked in `docs/design/`; no crate yet)
+- Constraints: product design is `docs/design/` (split by concern)
 
 ## Lessons
 
 - [control-files-need-nested-agents](lessons/quality/control-files-need-nested-agents.md) — quality/nested-agents-before-top-level-files — `quality/` still needs nested AGENTS.md
+- [design-folder-by-concern](lessons/docs/design-folder-by-concern.md) — docs/design-docs-split-by-concern — oversized designs go in `docs/design/` by concern
 
 ## Patterns
 
