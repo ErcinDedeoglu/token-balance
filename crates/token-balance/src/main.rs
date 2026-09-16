@@ -1,3 +1,4 @@
+mod accounts;
 mod adapters;
 mod board;
 mod cards;
@@ -13,14 +14,13 @@ mod theme;
 mod tui;
 mod windows;
 
-use crate::adapters::live_registry;
+use crate::adapters::open_registry;
 use crate::credentials::Credentials;
 use crate::domain::{Clock, SystemClock};
 use crate::event_loop::run_crossterm;
-use crate::fixtures::{FixtureSet, fixture_registry};
-use crate::providers::Provider;
+use crate::fixtures::FixtureSet;
 use crate::tui::App;
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use std::io;
 use std::path::Path;
 use std::sync::Arc;
@@ -32,6 +32,14 @@ struct Cli {
     fixture: Option<FixtureSet>,
     #[arg(long)]
     muse_on_demand: bool,
+    #[command(subcommand)]
+    command: Option<Cmd>,
+}
+
+#[derive(Subcommand, Debug)]
+enum Cmd {
+    /// Write a commented accounts.toml template
+    Init,
 }
 
 fn print_version() {
@@ -45,18 +53,12 @@ fn print_version() {
     println!("{name} {}", env!("CARGO_PKG_VERSION"));
 }
 
-fn build_providers(cli: &Cli, clock: Arc<dyn Clock>) -> Vec<Arc<dyn Provider>> {
-    match cli.fixture {
-        Some(set) => fixture_registry(set, clock),
-        None => live_registry(
-            &Credentials::from_process(),
-            cli.muse_on_demand
-                || matches!(
-                    std::env::var("TOKEN_BALANCE_MUSE_ON_DEMAND").as_deref(),
-                    Ok("1") | Ok("true") | Ok("TRUE")
-                ),
-        ),
-    }
+fn muse_on_demand(cli: &Cli) -> bool {
+    cli.muse_on_demand
+        || matches!(
+            std::env::var("TOKEN_BALANCE_MUSE_ON_DEMAND").as_deref(),
+            Ok("1") | Ok("true") | Ok("TRUE")
+        )
 }
 
 fn main() {
@@ -77,9 +79,28 @@ fn main() {
 
 async fn run() -> io::Result<()> {
     let cli = Cli::parse();
+    if matches!(cli.command, Some(Cmd::Init)) {
+        let path = crate::accounts::write_init(&Credentials::from_process())
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        println!("wrote {}", path.display());
+        return Ok(());
+    }
     let clock: Arc<dyn Clock> = Arc::new(SystemClock);
-    let providers = build_providers(&cli, Arc::clone(&clock));
+    let creds = Credentials::from_process();
+    let muse = muse_on_demand(&cli);
+    let providers = match open_registry(cli.fixture, &creds, muse, Arc::clone(&clock)) {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("{e}");
+            std::process::exit(1);
+        }
+    };
     let (app, mut fetch_rx) = App::new(providers, clock, cli.fixture);
+    let app = if cli.fixture.is_none() {
+        app.with_live(creds, muse)
+    } else {
+        app
+    };
     let app = app.bootstrap(&mut fetch_rx).await;
     run_crossterm(app, fetch_rx).await
 }

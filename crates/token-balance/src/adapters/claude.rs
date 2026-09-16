@@ -1,7 +1,8 @@
-use crate::adapters::{http_get_json, json_f64};
+use crate::accounts::Pointer;
+use crate::adapters::{http_get_json, json_f64, pointer_secret};
 use crate::credentials::{Credentials, json_field};
 use crate::domain::{CreditUnit, ExtraCredits, ProviderStatus, QuotaWindow, WindowLabel};
-use crate::providers::{FetchFuture, Provider, RefreshPolicy, glyph_ascii};
+use crate::providers::{AccountIdentity, FetchFuture, Provider, RefreshPolicy};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 
@@ -9,33 +10,50 @@ pub const CLAUDE_USAGE_URL: &str = "https://api.anthropic.com/api/oauth/usage";
 pub const CLAUDE_BETA: &str = "oauth-2025-04-20";
 
 pub struct ClaudeAdapter {
+    ident: AccountIdentity,
     token: Option<String>,
     recorded: Option<Value>,
 }
 
 impl ClaudeAdapter {
-    pub fn from_credentials(c: &Credentials) -> Self {
-        let token = c.read_to_string(".claude/.credentials.json").and_then(|t| {
-            json_field(&t, &["accessToken", "access_token", "claudeAiOauth"]).or_else(|| {
-                let v: Value = serde_json::from_str(&t).ok()?;
-                v.pointer("/claudeAiOauth/accessToken")
-                    .and_then(|x| x.as_str())
-                    .map(str::to_string)
-            })
-        });
+    pub fn from_account(c: &Credentials, ident: AccountIdentity, pointer: &Pointer) -> Self {
+        let token = match pointer {
+            Pointer::Env(_) => pointer_secret(c, pointer, &["accessToken", "access_token"]),
+            Pointer::File(p) => c.read_to_string(p).and_then(|t| claude_token(&t)),
+        };
         Self {
+            ident,
             token,
             recorded: None,
         }
     }
 
     #[cfg(test)]
+    pub fn from_credentials(c: &Credentials) -> Self {
+        Self::from_account(
+            c,
+            AccountIdentity::vendor_default("claude", "Claude"),
+            &Pointer::File(".claude/.credentials.json".into()),
+        )
+    }
+
+    #[cfg(test)]
     pub fn with_recorded(json: Value) -> Self {
         Self {
+            ident: AccountIdentity::vendor_default("claude", "Claude"),
             token: Some("redacted".into()),
             recorded: Some(json),
         }
     }
+}
+
+fn claude_token(text: &str) -> Option<String> {
+    json_field(text, &["accessToken", "access_token", "claudeAiOauth"]).or_else(|| {
+        let v: Value = serde_json::from_str(text).ok()?;
+        v.pointer("/claudeAiOauth/accessToken")
+            .and_then(|x| x.as_str())
+            .map(str::to_string)
+    })
 }
 
 fn bucket(v: &Value, label: WindowLabel, mins: u32) -> Option<QuotaWindow> {
@@ -97,14 +115,14 @@ pub fn map_claude_usage(v: &Value) -> ProviderStatus {
 }
 
 impl Provider for ClaudeAdapter {
-    fn id(&self) -> &'static str {
-        "claude"
+    fn id(&self) -> &str {
+        &self.ident.id
     }
-    fn display_name(&self) -> &'static str {
-        "Claude"
+    fn display_name(&self) -> &str {
+        &self.ident.label
     }
-    fn glyph_ascii(&self) -> &'static str {
-        glyph_ascii("claude")
+    fn vendor(&self) -> &str {
+        self.ident.vendor
     }
     fn docs_url(&self) -> Option<&'static str> {
         Some("https://docs.anthropic.com/")

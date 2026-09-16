@@ -123,11 +123,15 @@ Not in v1: `keyring`, `rusqlite`, `prometheus`, `async-trait`, `color-eyre` (pre
 
 ```text
 main
-  parse Cli { fixture: Option<FixtureSet> }   # see cli.md
+  parse Cli { fixture: Option<FixtureSet>, command: init? }   # see cli.md
   clock = SystemClock (FrozenClock in tests / TestBackend)
-  build Vec<Arc<dyn Provider>>
+  if init: write commented accounts.toml; exit 0
+  if fixture: fixture_registry (does not read accounts.toml)
+  else: live_registry from {HOME}/.config/token-balance/accounts.toml
+        missing file → empty vec; invalid → stderr + exit 1
   enter raw mode + alt screen
-  App { snapshots, selected_id, overlay, sort, fetching, refresh_queued, scroll, clock }
+  App { snapshots, selected_id, overlay, sort, fetching, refresh_queued, scroll, clock, live? }
+  r on live path re-reads accounts.toml then fetches
   if fixture == Error { snapshots = mixed Available }  # seed, no paint
   first refresh (all)   # then first paint — never paint empty Error Codex
   loop tokio::select!

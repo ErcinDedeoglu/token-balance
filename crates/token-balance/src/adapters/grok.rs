@@ -1,31 +1,42 @@
-use crate::adapters::{http_get_json, json_f64};
-use crate::credentials::{Credentials, json_field};
+use crate::accounts::Pointer;
+use crate::adapters::{http_get_json, json_f64, pointer_secret};
+use crate::credentials::Credentials;
 use crate::domain::{CreditUnit, ExtraCredits, ProviderStatus, QuotaWindow, WindowLabel};
-use crate::providers::{FetchFuture, Provider, RefreshPolicy, glyph_ascii};
+use crate::providers::{AccountIdentity, FetchFuture, Provider, RefreshPolicy};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 
 pub const GROK_BILLING_URL: &str = "https://cli-chat-proxy.grok.com/v1/billing?format=credits";
+pub const GROK_AUTH_KEYS: &[&str] = &["token", "access_token", "accessToken", "key"];
 
 pub struct GrokAdapter {
+    ident: AccountIdentity,
     token: Option<String>,
     recorded: Option<Value>,
 }
 
 impl GrokAdapter {
-    pub fn from_credentials(c: &Credentials) -> Self {
-        let token = c
-            .read_to_string(".grok/auth.json")
-            .and_then(|t| json_field(&t, &["token", "access_token", "accessToken"]));
+    pub fn from_account(c: &Credentials, ident: AccountIdentity, pointer: &Pointer) -> Self {
         Self {
-            token,
+            ident,
+            token: pointer_secret(c, pointer, GROK_AUTH_KEYS),
             recorded: None,
         }
     }
 
     #[cfg(test)]
+    pub fn from_credentials(c: &Credentials) -> Self {
+        Self::from_account(
+            c,
+            AccountIdentity::vendor_default("grok", "Grok"),
+            &Pointer::File(".grok/auth.json".into()),
+        )
+    }
+
+    #[cfg(test)]
     pub fn with_recorded(json: Value) -> Self {
         Self {
+            ident: AccountIdentity::vendor_default("grok", "Grok"),
             token: Some("redacted".into()),
             recorded: Some(json),
         }
@@ -84,14 +95,14 @@ pub fn map_grok_billing(v: &Value) -> ProviderStatus {
 }
 
 impl Provider for GrokAdapter {
-    fn id(&self) -> &'static str {
-        "grok"
+    fn id(&self) -> &str {
+        &self.ident.id
     }
-    fn display_name(&self) -> &'static str {
-        "Grok"
+    fn display_name(&self) -> &str {
+        &self.ident.label
     }
-    fn glyph_ascii(&self) -> &'static str {
-        glyph_ascii("grok")
+    fn vendor(&self) -> &str {
+        self.ident.vendor
     }
     fn docs_url(&self) -> Option<&'static str> {
         Some("https://grok.com")

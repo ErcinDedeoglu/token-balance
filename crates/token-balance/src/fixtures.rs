@@ -1,6 +1,6 @@
 use crate::domain::{Clock, FrozenClock, LedgerKind, ProviderSnapshot, ProviderStatus};
-use crate::fixture_board::{danger_specs, mixed_specs, unsigned_specs};
-use crate::providers::{FetchFuture, Provider, RefreshPolicy, glyph_ascii};
+use crate::fixture_board::{danger_specs, mixed_specs, multi_specs, unsigned_specs};
+use crate::providers::{FetchFuture, Provider, RefreshPolicy};
 use chrono::Utc;
 use clap::ValueEnum;
 use std::sync::Arc;
@@ -11,6 +11,7 @@ pub enum FixtureSet {
     Unsigned,
     Danger,
     Error,
+    Multi,
 }
 
 #[cfg(test)]
@@ -39,23 +40,26 @@ pub(crate) enum Spec {
 
 #[derive(Clone)]
 pub struct FixtureProvider {
-    pub(crate) id: &'static str,
-    pub(crate) display_name: &'static str,
+    pub(crate) id: String,
+    pub(crate) display_name: String,
+    pub(crate) vendor: &'static str,
     pub(crate) docs: Option<&'static str>,
     pub(crate) clock: Arc<dyn Clock>,
     pub(crate) spec: Spec,
 }
 
 pub(crate) fn fp(
-    id: &'static str,
-    display_name: &'static str,
+    id: impl Into<String>,
+    display_name: impl Into<String>,
+    vendor: &'static str,
     docs: Option<&'static str>,
     clock: &Arc<dyn Clock>,
     spec: Spec,
 ) -> FixtureProvider {
     FixtureProvider {
-        id,
-        display_name,
+        id: id.into(),
+        display_name: display_name.into(),
+        vendor,
         docs,
         clock: Arc::clone(clock),
         spec,
@@ -87,14 +91,14 @@ impl FixtureProvider {
 }
 
 impl Provider for FixtureProvider {
-    fn id(&self) -> &'static str {
-        self.id
+    fn id(&self) -> &str {
+        &self.id
     }
-    fn display_name(&self) -> &'static str {
-        self.display_name
+    fn display_name(&self) -> &str {
+        &self.display_name
     }
-    fn glyph_ascii(&self) -> &'static str {
-        glyph_ascii(self.id)
+    fn vendor(&self) -> &str {
+        self.vendor
     }
     fn docs_url(&self) -> Option<&'static str> {
         self.docs
@@ -120,6 +124,7 @@ pub fn fixture_registry(set: FixtureSet, clock: Arc<dyn Clock>) -> Vec<Arc<dyn P
         FixtureSet::Unsigned => unsigned_specs(&clock),
         FixtureSet::Danger => danger_specs(&clock),
         FixtureSet::Error => mixed_specs(&clock, true),
+        FixtureSet::Multi => multi_specs(&clock),
     };
     list.into_iter()
         .map(|p| Arc::new(p) as Arc<dyn Provider>)

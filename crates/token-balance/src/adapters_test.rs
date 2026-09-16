@@ -146,6 +146,52 @@ async fn kimi_missing_key_is_not_configured() {
 }
 
 #[test]
+fn zai_credit_limit_maps_5h_and_weekly_number_1() {
+    let v: Value = serde_json::from_str(
+        r#"{
+          "code": 200,
+          "data": {
+            "level": "max",
+            "limits": [
+              {
+                "type": "CREDIT_LIMIT",
+                "unit": 3,
+                "number": 5,
+                "percentage": 11,
+                "nextResetTime": 1789545169435
+              },
+              {
+                "type": "CREDIT_LIMIT",
+                "unit": 6,
+                "number": 1,
+                "percentage": 27,
+                "nextResetTime": 1789810016984
+              }
+            ]
+          }
+        }"#,
+    )
+    .unwrap();
+    let status = map_zai_quota(&v);
+    let av = effective_available(&status).expect("available");
+    assert_eq!(av.plan.as_deref(), Some("max"));
+    let session = av
+        .windows
+        .iter()
+        .find(|w| matches!(w.label, WindowLabel::FiveHour))
+        .unwrap();
+    assert_eq!(session.used_percent, 11.0);
+    assert_eq!(session.remaining_percent, 89.0);
+    let weekly = av
+        .windows
+        .iter()
+        .find(|w| matches!(w.label, WindowLabel::Weekly))
+        .unwrap();
+    assert_eq!(weekly.used_percent, 27.0);
+    assert_eq!(weekly.remaining_percent, 73.0);
+}
+
+#[test]
 fn zai_percentage_is_used_and_zhipu_ignored() {
     assert_eq!(
         ZAI_QUOTA_URL,
@@ -180,6 +226,28 @@ async fn zai_zhipu_key_only_is_not_configured() {
     let z = ZaiAdapter::from_credentials(&c);
     match z.fetch().await {
         ProviderStatus::NotConfigured { .. } => {}
+        other => panic!("{other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn zai_missing_pointer_hint_names_env() {
+    use crate::accounts::Pointer;
+    use crate::providers::AccountIdentity;
+    let c = Credentials::empty();
+    let z = ZaiAdapter::from_account(
+        &c,
+        AccountIdentity {
+            id: "zai-2".into(),
+            label: "glm 2".into(),
+            vendor: "zai",
+        },
+        &Pointer::Env("ZAI_API_KEY_2".into()),
+    );
+    match z.fetch().await {
+        ProviderStatus::NotConfigured { hint } => {
+            assert!(hint.contains("ZAI_API_KEY_2"), "{hint}");
+        }
         other => panic!("{other:?}"),
     }
 }
@@ -260,6 +328,33 @@ fn grok_prepaid_only_is_error() {
 }
 
 #[test]
+fn grok_cli_auth_json_nested_key_is_token() {
+    use crate::accounts::Pointer;
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static N: AtomicU64 = AtomicU64::new(1);
+    let home = std::env::temp_dir().join(format!(
+        "tb-grok-auth-{}-{}",
+        std::process::id(),
+        N.fetch_add(1, Ordering::Relaxed)
+    ));
+    std::fs::create_dir_all(home.join(".grok")).unwrap();
+    std::fs::write(
+        home.join(".grok/auth.json"),
+        r#"{"https://auth.x.ai::example":{"key":"redacted-grok","refresh_token":"r"}}"#,
+    )
+    .unwrap();
+    let c = Credentials::isolated(home, BTreeMap::new());
+    let got = pointer_secret(&c, &Pointer::File(".grok/auth.json".into()), GROK_AUTH_KEYS);
+    assert_eq!(got.as_deref(), Some("redacted-grok"));
+}
+
+#[test]
+fn muse_keychain_blob_prefers_api_key() {
+    let blob = r#"{"secret_schema_version":1,"api_key":"muse-api","access_token":"muse-access"}"#;
+    assert_eq!(token_from_keychain_blob(blob).as_deref(), Some("muse-api"));
+}
+
+#[test]
 fn muse_default_skips_timer_and_does_not_post() {
     assert_eq!(MUSE_RESPONSES_URL, "https://api.meta.ai/v1/responses");
     let m = MuseAdapter::unsupported();
@@ -307,18 +402,26 @@ fn muse_opt_in_maps_sse() {
     assert_eq!(av.windows[0].remaining_percent, 80.0);
 }
 
-#[tokio::test]
-async fn live_registry_unsigned_without_creds() {
-    let list = live_registry(&Credentials::empty(), false);
-    assert_eq!(list.len(), 6);
-    for p in &list {
-        let status = p.fetch().await;
-        match (p.id(), status) {
-            ("muse", ProviderStatus::Unsupported { .. }) => {}
-            (_, ProviderStatus::NotConfigured { .. }) => {}
-            (id, other) => panic!("{id}: {other:?}"),
-        }
-    }
+#[test]
+fn muse_nested_subscription_maps_remaining() {
+    let sse = r#"event: response.subscription_usage
+data: {"type":"response.subscription_usage","subscription":{"tier":1,"weekly":{"resets_at":1789948800,"used_percent":34},"window":{"resets_at":1789571667,"used_percent":0,"window_duration_mins":300}}}
+"#;
+    let status = map_muse_sse(sse);
+    let av = effective_available(&status).expect("available");
+    let fh = av
+        .windows
+        .iter()
+        .find(|w| matches!(w.label, WindowLabel::FiveHour))
+        .unwrap();
+    assert_eq!(fh.remaining_percent, 100.0);
+    let wk = av
+        .windows
+        .iter()
+        .find(|w| matches!(w.label, WindowLabel::Weekly))
+        .unwrap();
+    assert_eq!(wk.used_percent, 34.0);
+    assert_eq!(wk.remaining_percent, 66.0);
 }
 
 #[tokio::test]

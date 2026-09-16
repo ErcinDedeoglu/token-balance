@@ -1,13 +1,64 @@
-use crate::adapters::{http_post_text, json_f64};
+use crate::accounts::Pointer;
+use crate::adapters::{http_post_text, json_f64, pointer_secret};
 use crate::credentials::{Credentials, json_field};
 use crate::domain::{ProviderStatus, QuotaWindow, WindowLabel};
-use crate::providers::{FetchFuture, Provider, RefreshPolicy, glyph_ascii};
-use chrono::{DateTime, Utc};
+use crate::providers::{AccountIdentity, FetchFuture, Provider, RefreshPolicy};
+use chrono::{DateTime, TimeZone, Utc};
 use serde_json::{Value, json};
 
 pub const MUSE_RESPONSES_URL: &str = "https://api.meta.ai/v1/responses";
+pub const MUSE_KEYCHAIN_SERVICE: &str = "ai.meta.dev.credentials";
+pub const MUSE_KEYCHAIN_ACCOUNT: &str = "meta";
+const MUSE_TOKEN_KEYS: &[&str] = &["api_key", "access_token", "token"];
+
+fn muse_token(c: &Credentials, pointer: &Pointer) -> Option<String> {
+    if let Some(t) = pointer_secret(c, pointer, MUSE_TOKEN_KEYS) {
+        return Some(t);
+    }
+    let Pointer::File(p) = pointer else {
+        return None;
+    };
+    let text = c.read_to_string(p)?;
+    let v: Value = serde_json::from_str(&text).ok()?;
+    if v.pointer("/providers/meta/storage").and_then(|x| x.as_str()) != Some("keychain") {
+        return None;
+    }
+    macos_keychain_blob(MUSE_KEYCHAIN_SERVICE, MUSE_KEYCHAIN_ACCOUNT)
+        .and_then(|blob| token_from_keychain_blob(&blob))
+}
+
+pub fn token_from_keychain_blob(blob: &str) -> Option<String> {
+    json_field(blob, MUSE_TOKEN_KEYS).or_else(|| {
+        let t = blob.trim();
+        if t.is_empty() || t.starts_with('{') {
+            None
+        } else {
+            Some(t.to_string())
+        }
+    })
+}
+
+fn macos_keychain_blob(service: &str, account: &str) -> Option<String> {
+    #[cfg(target_os = "macos")]
+    {
+        let out = std::process::Command::new("security")
+            .args(["find-generic-password", "-s", service, "-a", account, "-w"])
+            .output()
+            .ok()?;
+        if !out.status.success() {
+            return None;
+        }
+        String::from_utf8(out.stdout).ok()
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (service, account);
+        None
+    }
+}
 
 pub struct MuseAdapter {
+    ident: AccountIdentity,
     on_demand: bool,
     token: Option<String>,
     payg_only: bool,
@@ -15,13 +66,28 @@ pub struct MuseAdapter {
 }
 
 impl MuseAdapter {
+    pub fn from_account(
+        c: &Credentials,
+        ident: AccountIdentity,
+        pointer: &Pointer,
+        on_demand: bool,
+    ) -> Self {
+        Self {
+            ident,
+            on_demand,
+            token: muse_token(c, pointer),
+            payg_only: false,
+            recorded: None,
+        }
+    }
+
+    #[cfg(test)]
     pub fn from_credentials(c: &Credentials, on_demand: bool) -> Self {
-        let file = c
-            .read_to_string(".config/muse/auth.json")
-            .and_then(|t| json_field(&t, &["access_token", "token", "api_key"]));
+        let file = muse_token(c, &Pointer::File(".config/muse/auth.json".into()));
         let payg = c.env("META_API_KEY").map(str::to_string);
         let payg_only = file.is_none() && payg.is_some();
         Self {
+            ident: AccountIdentity::vendor_default("muse", "Muse"),
             on_demand,
             token: file,
             payg_only,
@@ -32,6 +98,7 @@ impl MuseAdapter {
     #[cfg(test)]
     pub fn with_recorded(sse: String) -> Self {
         Self {
+            ident: AccountIdentity::vendor_default("muse", "Muse"),
             on_demand: true,
             token: Some("redacted".into()),
             payg_only: false,
@@ -42,6 +109,7 @@ impl MuseAdapter {
     #[cfg(test)]
     pub fn unsupported() -> Self {
         Self {
+            ident: AccountIdentity::vendor_default("muse", "Muse"),
             on_demand: false,
             token: None,
             payg_only: false,
@@ -69,22 +137,41 @@ pub fn map_muse_sse(text: &str) -> ProviderStatus {
             stale: None,
         };
     };
-    let usage = v.get("subscription_usage").unwrap_or(&v);
-    let used = json_f64(&usage["used_percent"])
-        .or_else(|| json_f64(&usage["usage_percent"]))
-        .or_else(|| json_f64(&usage["remaining_percent"]).map(|r| 100.0 - r));
+    let root = v
+        .get("subscription_usage")
+        .or_else(|| v.get("subscription"))
+        .unwrap_or(&v);
+    if root.get("weekly").is_some() || root.get("window").is_some() {
+        let mut windows = Vec::new();
+        if let Some(w) = muse_limit_window(root.get("window"), None) {
+            windows.push(w);
+        }
+        if let Some(w) = muse_limit_window(root.get("weekly"), Some(10080)) {
+            windows.push(w);
+        }
+        if windows.is_empty() {
+            return ProviderStatus::Error {
+                message: "muse: missing percent".into(),
+                stale: None,
+            };
+        }
+        return ProviderStatus::Available {
+            plan: Some("Everyday".into()),
+            windows,
+            extra: None,
+        };
+    }
+    let used = json_f64(&root["used_percent"])
+        .or_else(|| json_f64(&root["usage_percent"]))
+        .or_else(|| json_f64(&root["remaining_percent"]).map(|r| 100.0 - r));
     let Some(used) = used else {
         return ProviderStatus::Error {
             message: "muse: missing percent".into(),
             stale: None,
         };
     };
-    let mins = json_f64(&usage["window_duration_mins"]).unwrap_or(300.0) as u32;
-    let resets = usage
-        .get("resets_at")
-        .and_then(|x| x.as_str())
-        .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
-        .map(|d| d.with_timezone(&Utc));
+    let mins = json_f64(&root["window_duration_mins"]).unwrap_or(300.0) as u32;
+    let resets = muse_resets(&root["resets_at"]);
     let label = if mins <= 360 {
         WindowLabel::FiveHour
     } else {
@@ -102,15 +189,46 @@ pub fn map_muse_sse(text: &str) -> ProviderStatus {
     }
 }
 
+fn muse_limit_window(node: Option<&Value>, default_mins: Option<u32>) -> Option<QuotaWindow> {
+    let w = node?;
+    let used = json_f64(&w["used_percent"])?;
+    let mins = json_f64(&w["window_duration_mins"])
+        .map(|n| n as u32)
+        .or(default_mins)
+        .unwrap_or(300);
+    let label = if mins <= 360 {
+        WindowLabel::FiveHour
+    } else {
+        WindowLabel::Weekly
+    };
+    Some(QuotaWindow::from_used_percent(
+        label,
+        used as f32,
+        muse_resets(&w["resets_at"]),
+        Some(mins),
+    ))
+}
+
+fn muse_resets(v: &Value) -> Option<DateTime<Utc>> {
+    if let Some(s) = v.as_str() {
+        return DateTime::parse_from_rfc3339(s)
+            .ok()
+            .map(|d| d.with_timezone(&Utc));
+    }
+    let n = json_f64(v)?;
+    let secs = if n > 1.0e12 { n / 1000.0 } else { n };
+    Utc.timestamp_opt(secs as i64, 0).single()
+}
+
 impl Provider for MuseAdapter {
-    fn id(&self) -> &'static str {
-        "muse"
+    fn id(&self) -> &str {
+        &self.ident.id
     }
-    fn display_name(&self) -> &'static str {
-        "Muse"
+    fn display_name(&self) -> &str {
+        &self.ident.label
     }
-    fn glyph_ascii(&self) -> &'static str {
-        glyph_ascii("muse")
+    fn vendor(&self) -> &str {
+        self.ident.vendor
     }
     fn docs_url(&self) -> Option<&'static str> {
         Some("https://ai.developer.meta.com/docs/muse-code/subscriptions/")

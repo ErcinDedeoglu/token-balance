@@ -29,10 +29,31 @@ pub fn allows_refresh(policy: RefreshPolicy, trigger: RefreshTrigger) -> bool {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct AccountIdentity {
+    pub id: String,
+    pub label: String,
+    pub vendor: &'static str,
+}
+
+impl AccountIdentity {
+    #[cfg(test)]
+    pub fn vendor_default(vendor: &'static str, label: &'static str) -> Self {
+        Self {
+            id: vendor.to_string(),
+            label: label.to_string(),
+            vendor,
+        }
+    }
+}
+
 pub trait Provider: Send + Sync {
-    fn id(&self) -> &'static str;
-    fn display_name(&self) -> &'static str;
-    fn glyph_ascii(&self) -> &'static str;
+    fn id(&self) -> &str;
+    fn display_name(&self) -> &str;
+    fn vendor(&self) -> &str;
+    fn glyph_ascii(&self) -> &'static str {
+        glyph_ascii(self.vendor())
+    }
     fn ledger(&self) -> LedgerKind {
         LedgerKind::PlanRemaining
     }
@@ -54,6 +75,8 @@ pub const GLYPHS: &[(&str, &str)] = &[
     ("kimi", "K"),
     ("grok", "G"),
     ("zai", "Z"),
+    ("kiro", "R"),
+    ("deepseek", "D"),
     ("muse", "M"),
 ];
 
@@ -77,7 +100,7 @@ mod tests {
             assert_eq!(g.chars().count(), 1, "{id} glyph must be 1 column");
             assert!(seen.insert(*g), "duplicate glyph {g}");
         }
-        assert_eq!(GLYPHS.len(), 6);
+        assert_eq!(GLYPHS.len(), 8);
     }
 
     #[test]

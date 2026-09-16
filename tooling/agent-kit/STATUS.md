@@ -1,62 +1,47 @@
 # agent-kit STATUS
 
 - result: passed
-- growth: mixed
-- added: 34
-- modified: 9
-- deleted: 1
+- growth: vertical
+- added: 5
+- modified: 23
+- deleted: 0
 - moved: 0
 
 ## added
-- `Cargo.lock` 6882a38156199003
-- `Cargo.toml` 6ffc2010549ecaa2
-- `LICENSE-APACHE` cfc7749b96f63bd3
-- `LICENSE-MIT` 6d31ddbd74b9c37e
-- `crates/AGENTS.md` 0f1ce054273b7e52
-- `crates/token-balance/AGENTS.md` 2a214a86f408d486
-- `crates/token-balance/Cargo.toml` 5e81d8dc75ca88bd
-- `crates/token-balance/src/adapters.rs` cfbb8a4a8b38d65d
-- `crates/token-balance/src/adapters/claude.rs` 4b74a0ee97e1771a
-- `crates/token-balance/src/adapters/codex.rs` 59e9a805aefca68d
-- `crates/token-balance/src/adapters/codex_rpc.rs` c27d54e2e539b890
-- `crates/token-balance/src/adapters/codex_rpc_test.rs` 93e78db182d10bed
-- `crates/token-balance/src/adapters/grok.rs` 6efb1b29a89b8c1e
-- `crates/token-balance/src/adapters/kimi.rs` ebb4a6ba3ffc00f2
-- `crates/token-balance/src/adapters/muse.rs` 309257d48138c8b8
-- `crates/token-balance/src/adapters/zai.rs` c95b3fa3972d5d95
-- `crates/token-balance/src/adapters_test.rs` ee0881cca764b33d
-- `crates/token-balance/src/board.rs` 5f056d6b25ffd068
-- `crates/token-balance/src/cards.rs` 6466e235bf8f7bbc
-- `crates/token-balance/src/credentials.rs` 9769db0694a6d7eb
-- `crates/token-balance/src/domain.rs` 07664b747a1a8f0c
-- `crates/token-balance/src/domain_test.rs` 502af87092ef19e6
-- `crates/token-balance/src/event_loop.rs` 8af3fcb1230742a5
-- `crates/token-balance/src/fixture_board.rs` f26d51f04d72e8d4
-- `crates/token-balance/src/fixtures.rs` 62a1c53191899820
-- `crates/token-balance/src/layout.rs` 4f35e4eb44b62ad1
-- `crates/token-balance/src/main.rs` 18f0813b64e66336
-- `crates/token-balance/src/overlay.rs` 65de23fa005cab48
-- `crates/token-balance/src/providers.rs` b0efd19f2e136cdb
-- `crates/token-balance/src/theme.rs` 8fb6029baa6ed542
-- `crates/token-balance/src/tui.rs` a0215eaf7ef7ad31
-- `crates/token-balance/src/tui_test.rs` 6e1fa13d3428443b
-- `crates/token-balance/src/windows.rs` 165c6e50e8e059fb
-- `memory/daily/2026-09-16.md` e13d562152f7f560
+- `crates/token-balance/src/accounts.rs` 0f18b29ecec17438
+- `crates/token-balance/src/accounts_test.rs` ec601334be27470b
+- `crates/token-balance/src/live_registry_test.rs` 9a40cb2542009e54
+- `goals/GOAL-ACCT-1.md` 56d0409723ce2043
+- `memory/lessons/cli/cargo-run-home-is-rustup-home.md` 4a2b844836064138
 
 ## modified
-- `.gitignore` 4038c7c35d0f4bc6
-- `.qualityignore` 9097bdd4043ee6fc
-- `AGENTS.md` 76c31515e8d08330
-- `README.md` 595d2e42451ea679
-- `docs/QUALITY.md` 8f234575e1b5b510
-- `goals/GOAL-QUOTA-1.md` 7804a45f5a523215
-- `memory/daily/2026-09-15.md` 283ba903a924e2b8
-- `quality/cohesion-reviews.json` c7c19ee3f50c2243
-- `tooling/agent-kit/check.sh` 1264a1e9be09f57f
+- `Cargo.lock` e728fa1610fef550
+- `crates/token-balance/AGENTS.md` 8c49b10d4c7223f4
+- `crates/token-balance/Cargo.toml` f0b547b6856cf1c9
+- `crates/token-balance/src/adapters.rs` 2e5f3114bec3050f
+- `crates/token-balance/src/adapters/claude.rs` 33bae75abebd6b0b
+- `crates/token-balance/src/adapters/codex.rs` 58e0da107ea770a0
+- `crates/token-balance/src/adapters/grok.rs` cb146b26b0a3733e
+- `crates/token-balance/src/adapters/kimi.rs` a112bfec44f2c11e
+- `crates/token-balance/src/adapters/muse.rs` 20f90ca4de8a213d
+- `crates/token-balance/src/adapters/zai.rs` b6cb09b9d88490ff
+- `crates/token-balance/src/adapters_test.rs` 3d48c539bc6fb1c9
+- `crates/token-balance/src/board.rs` d608d2072f2814cb
+- `crates/token-balance/src/credentials.rs` 8d5f044be76cba89
+- `crates/token-balance/src/fixture_board.rs` 9bda40c4e1332ce5
+- `crates/token-balance/src/fixtures.rs` ca615bc9d75064b3
+- `crates/token-balance/src/main.rs` 36b42f750487c7e9
+- `crates/token-balance/src/providers.rs` 6738cfe94a7b1376
+- `crates/token-balance/src/tui.rs` 184e62ee8e97304b
+- `crates/token-balance/src/tui_test.rs` 04c01901f209ae0f
+- `docs/design/architecture.md` 3b3cb71702e7289b
+- `docs/design/cli.md` 6a5a7910161fcc28
+- `docs/design/layout.md` aa8682360847cd5f
+- `docs/design/providers.md` fe153ef63dc004ef
 
 ## moved
 - (none)
 
 ## prompt
 
-MIXED: nested AGENTS.md for new folders first, then deepen.
+VERTICAL: stay in domain. One concern per file.

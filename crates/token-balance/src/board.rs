@@ -81,9 +81,14 @@ fn pack_chrome(area: Rect, n: usize, scroll_row: u16) -> (Rect, Rect, Rect) {
     };
     let grid_h = rows.saturating_mul(CARD_ROWS);
     let avail = area.height.saturating_sub(hh).saturating_sub(1);
+    let body_h = if n == 0 {
+        3.min(avail)
+    } else {
+        grid_h.min(avail)
+    };
     let chunks = Layout::vertical([
         Constraint::Length(hh),
-        Constraint::Length(grid_h.min(avail)),
+        Constraint::Length(body_h),
         Constraint::Length(1),
         Constraint::Fill(1),
     ])
@@ -132,6 +137,16 @@ fn draw_grid(
     width: u16,
     height: u16,
 ) {
+    if snapshots.is_empty() {
+        frame.render_widget(
+            Paragraph::new(
+                " no accounts in ~/.config/token-balance/accounts.toml\n run  tb init",
+            )
+            .style(Style::default().fg(theme.label)),
+            area,
+        );
+        return;
+    }
     let cols = columns(width);
     let vis = visible_card_rows(height, width);
     let n = snapshots.len();
@@ -162,6 +177,54 @@ fn draw_grid(
         idx += cols as usize;
         y = y.saturating_add(CARD_ROWS);
     }
+}
+
+pub fn card_at(
+    col: u16,
+    row: u16,
+    area: Rect,
+    snapshots: &[ProviderSnapshot],
+    scroll_row: u16,
+) -> Option<String> {
+    if snapshots.is_empty() {
+        return None;
+    }
+    let (_, body, _) = pack_chrome(area, snapshots.len(), scroll_row);
+    let cols = columns(area.width);
+    let vis = visible_card_rows(area.height, area.width);
+    let n = snapshots.len();
+    let (start, end) = visible_index_range(scroll_row, vis, cols, n);
+    let inner = padded_inner(body);
+    let mut y = inner.y;
+    let mut idx = start;
+    while idx < end {
+        let row_area = Rect {
+            x: inner.x,
+            y,
+            width: inner.width,
+            height: CARD_ROWS.min(inner.y + inner.height - y),
+        };
+        if row_area.height < CARD_ROWS {
+            break;
+        }
+        let slots = card_row_areas(row_area, cols);
+        for (c, slot) in slots.into_iter().enumerate() {
+            let i = idx + c;
+            if i >= end {
+                break;
+            }
+            if col >= slot.x
+                && col < slot.x.saturating_add(slot.width)
+                && row >= slot.y
+                && row < slot.y.saturating_add(slot.height)
+            {
+                return Some(snapshots[i].id.clone());
+            }
+        }
+        idx += cols as usize;
+        y = y.saturating_add(CARD_ROWS);
+    }
+    None
 }
 
 fn draw_footer(

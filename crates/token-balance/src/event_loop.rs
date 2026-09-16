@@ -1,7 +1,7 @@
 use crate::domain::ProviderStatus;
 use crate::providers::RefreshTrigger;
 use crate::tui::App;
-use crossterm::event::{DisableMouseCapture, Event, KeyEventKind};
+use crossterm::event::{DisableMouseCapture, EnableMouseCapture, Event, KeyEventKind};
 use crossterm::execute;
 use crossterm::terminal::{
     EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
@@ -27,12 +27,12 @@ pub async fn run_crossterm(
 ) -> io::Result<()> {
     enable_raw_mode()?;
     let mut out = stdout();
-    execute!(out, EnterAlternateScreen)?;
+    execute!(out, EnterAlternateScreen, EnableMouseCapture)?;
     let _restore = Restore;
     let hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
         let _ = disable_raw_mode();
-        let _ = execute!(stdout(), LeaveAlternateScreen);
+        let _ = execute!(stdout(), LeaveAlternateScreen, DisableMouseCapture);
         hook(info);
     }));
     let mut terminal = Terminal::new(CrosstermBackend::new(out))?;
@@ -62,11 +62,13 @@ pub async fn run_crossterm(
         terminal.draw(|f| app.draw(f))?;
         tokio::select! {
             ev = rx.recv() => {
-                let Some(Event::Key(key)) = ev else { continue };
-                if key.kind == KeyEventKind::Release {
-                    continue;
+                match ev {
+                    Some(Event::Key(key)) if key.kind != KeyEventKind::Release => {
+                        app.handle_key(key.code);
+                    }
+                    Some(Event::Mouse(m)) => app.handle_mouse(m),
+                    _ => {}
                 }
-                app.handle_key(key.code);
             }
             _ = tick.tick() => {}
             _ = minute.tick() => {

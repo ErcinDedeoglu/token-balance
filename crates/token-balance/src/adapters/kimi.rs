@@ -1,41 +1,55 @@
-use crate::adapters::{http_get_json, json_f64};
-use crate::credentials::{Credentials, json_field};
+use crate::accounts::Pointer;
+use crate::adapters::{http_get_json, json_f64, pointer_secret};
+use crate::credentials::Credentials;
 use crate::domain::{ProviderStatus, QuotaWindow, WindowLabel};
-use crate::providers::{FetchFuture, Provider, RefreshPolicy, glyph_ascii};
+use crate::providers::{AccountIdentity, FetchFuture, Provider, RefreshPolicy};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 
 pub const KIMI_USAGES_URL: &str = "https://api.kimi.com/coding/v1/usages";
 
 pub struct KimiAdapter {
+    ident: AccountIdentity,
     key: Option<String>,
     recorded: Option<Value>,
 }
 
 impl KimiAdapter {
-    pub fn from_credentials(c: &Credentials) -> Self {
-        let key = c
-            .env("KIMI_CODE_API_KEY")
-            .or_else(|| c.env("KIMI_API_KEY"))
-            .map(str::to_string)
-            .or_else(|| {
-                c.read_to_string(".kimi-code/credentials/kimi-code.json")
-                    .and_then(|t| json_field(&t, &["api_key", "access_token"]))
-            })
-            .or_else(|| {
-                c.read_to_string(".kimi/credentials/kimi-code.json")
-                    .and_then(|t| json_field(&t, &["api_key", "access_token"]))
-            });
+    pub fn from_account(c: &Credentials, ident: AccountIdentity, pointer: &Pointer) -> Self {
         Self {
-            key,
+            ident,
+            key: pointer_secret(c, pointer, &["api_key", "access_token"]),
             recorded: None,
         }
     }
 
     #[cfg(test)]
+    pub fn from_credentials(c: &Credentials) -> Self {
+        let pointer = if c.env("KIMI_CODE_API_KEY").is_some() {
+            Pointer::Env("KIMI_CODE_API_KEY".into())
+        } else if c.env("KIMI_API_KEY").is_some() {
+            Pointer::Env("KIMI_API_KEY".into())
+        } else if c
+            .home()
+            .join(".kimi-code/credentials/kimi-code.json")
+            .is_file()
+        {
+            Pointer::File(".kimi-code/credentials/kimi-code.json".into())
+        } else {
+            Pointer::File(".kimi/credentials/kimi-code.json".into())
+        };
+        Self::from_account(
+            c,
+            AccountIdentity::vendor_default("kimi", "Kimi"),
+            &pointer,
+        )
+    }
+
+    #[cfg(test)]
     pub fn with_recorded(json: Value) -> Self {
         Self {
-            key: Some("sk-kimi-redacted".into()),
+            ident: AccountIdentity::vendor_default("kimi", "Kimi"),
+            key: Some("kimi-redacted".into()),
             recorded: Some(json),
         }
     }
@@ -108,14 +122,14 @@ pub fn map_kimi_usages(v: &Value) -> ProviderStatus {
 }
 
 impl Provider for KimiAdapter {
-    fn id(&self) -> &'static str {
-        "kimi"
+    fn id(&self) -> &str {
+        &self.ident.id
     }
-    fn display_name(&self) -> &'static str {
-        "Kimi"
+    fn display_name(&self) -> &str {
+        &self.ident.label
     }
-    fn glyph_ascii(&self) -> &'static str {
-        glyph_ascii("kimi")
+    fn vendor(&self) -> &str {
+        self.ident.vendor
     }
     fn refresh_policy(&self) -> RefreshPolicy {
         RefreshPolicy::Default

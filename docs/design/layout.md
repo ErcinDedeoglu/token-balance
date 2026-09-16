@@ -3,10 +3,10 @@
 This is a **risk board**, not a data warehouse. Schematic drawings: [mockups.md](mockups.md). PR3 oracle is TestBackend + `layout.rs`, not those drawings.
 
 1. **Header strip:** app name `token-balance`, local clock `HH:MM`, **worst remaining** (`Codex 18%`), last refresh age (`12s ago`), spinner **only while fetching**. **1 row when `area.width >= 80`** (truncate age before wrapping). **2 rows when width < 80** (name+clock on row 1; worst+age+spinner on row 2). Recommended minimum terminal: **80×24**.
-2. **Card grid:** one card per provider. Sort by **risk** (below). Disabled / unsigned / unsupported sink to the bottom, dimmed, never fake 0%.
+2. **Card grid:** one card per **account** (not per vendor). Title is vendor glyph + unique label. Sort by **risk** (below). Disabled / unsigned / unsupported sink to the bottom, dimmed, never fake 0%. Zero accounts: hint naming `.config/token-balance/accounts.toml` (no cards).
 3. **Responsive columns** (1-col padding on each side; gap 1 col between cards). Remainder columns from `inner % cols` go **left to right** via `Layout::horizontal` of `Constraint::Fill(1)` repeated `cols` times:
    - `< 80` cols → 1 column
-   - `80–139` → 2 columns (80×24 shows all six cards, no pager)
+   - `80–139` → 2 columns (`--fixture mixed` at 80×24 still shows all six vendor cards, no pager; `--fixture multi` with n>6 pages)
    - `≥ 140` → 3 columns
    - **139→140 cliff:** a 2-col card at 139 is ~68 inner cols; at 140 a 3-col card is ~45. Titles truncate (`unicode-width`); bars shrink. Keep the 140 breakpoint (3-col is for wide terminals, not for denser 2-col).
 4. **Card anatomy** (fixed — this is the product). **Card height is always 7 rows including borders** (title + 5 inner + bottom) for **every** status, including `NotConfigured` and `Unsupported`. 2-col/3-col rows align. Unused inner rows are blank, not omitted.

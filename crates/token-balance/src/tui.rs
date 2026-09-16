@@ -1,4 +1,6 @@
-use crate::board::paint;
+use crate::adapters::live_registry;
+use crate::board::{card_at, paint};
+use crate::credentials::Credentials;
 use crate::domain::{
     Clock, ProviderSnapshot, ProviderStatus, SortMode, apply_fetch, sort_snapshots,
 };
@@ -7,8 +9,9 @@ use crate::layout::{GridMove, card_row, clamp_scroll, columns, move_index, visib
 use crate::overlay::Overlay;
 use crate::providers::{Provider, RefreshTrigger, allows_refresh};
 use crate::theme::Theme;
+use std::collections::HashSet;
 use chrono::{DateTime, Utc};
-use crossterm::event::KeyCode;
+use crossterm::event::{KeyCode, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::Frame;
 use ratatui::layout::Rect;
 use std::sync::Arc;
@@ -26,6 +29,7 @@ pub struct App {
     pub last_area: Rect,
     clock: Arc<dyn Clock>,
     providers: Vec<Arc<dyn Provider>>,
+    live: Option<(Credentials, bool)>,
     last_refresh: Option<DateTime<Utc>>,
     fetch_tx: UnboundedSender<(String, ProviderStatus)>,
     in_flight: u32,
@@ -57,12 +61,37 @@ impl App {
             last_area: Rect::new(0, 0, 80, 24),
             clock,
             providers,
+            live: None,
             last_refresh: None,
             fetch_tx,
             in_flight: 0,
             theme: Theme::select(),
         };
         (app, fetch_rx)
+    }
+
+    pub fn with_live(mut self, creds: Credentials, muse_on_demand: bool) -> Self {
+        self.live = Some((creds, muse_on_demand));
+        self
+    }
+
+    fn reload_live(&mut self) {
+        let Some((creds, muse)) = &self.live else {
+            return;
+        };
+        let Ok(next) = live_registry(creds, *muse) else {
+            return;
+        };
+        let ids: HashSet<String> = next.iter().map(|p| p.id().to_string()).collect();
+        self.snapshots.retain(|s| ids.contains(&s.id));
+        if self
+            .selected_id
+            .as_ref()
+            .is_some_and(|id| !ids.contains(id))
+        {
+            self.selected_id = self.snapshots.first().map(|s| s.id.clone());
+        }
+        self.providers = next;
     }
 
     pub async fn bootstrap(mut self, rx: &mut UnboundedReceiver<(String, ProviderStatus)>) -> Self {
@@ -178,7 +207,10 @@ impl App {
         }
         match code {
             KeyCode::Char('q') | KeyCode::Esc => self.should_quit = true,
-            KeyCode::Char('r') => self.start_refresh(RefreshTrigger::Manual),
+            KeyCode::Char('r') => {
+                self.reload_live();
+                self.start_refresh(RefreshTrigger::Manual);
+            }
             KeyCode::Char('o') => {
                 self.sort = match self.sort {
                     SortMode::Risk => SortMode::Name,
@@ -193,6 +225,26 @@ impl App {
             KeyCode::Char('j') | KeyCode::Down => self.move_sel(GridMove::Down),
             KeyCode::Char('k') | KeyCode::Up => self.move_sel(GridMove::Up),
             _ => {}
+        }
+    }
+
+    pub fn handle_mouse(&mut self, ev: MouseEvent) {
+        if !matches!(ev.kind, MouseEventKind::Down(MouseButton::Left)) {
+            return;
+        }
+        if self.overlay != Overlay::None {
+            self.overlay = Overlay::None;
+            return;
+        }
+        if let Some(id) = card_at(
+            ev.column,
+            ev.row,
+            self.last_area,
+            &self.snapshots,
+            self.scroll_row,
+        ) {
+            self.selected_id = Some(id);
+            self.sync_scroll();
         }
     }
 
@@ -257,24 +309,6 @@ impl App {
         let id = self.selected_id.as_ref()?;
         self.snapshots.iter().find(|s| &s.id == id)
     }
-}
-
-#[cfg(test)]
-pub fn render_string(app: &mut App, width: u16, height: u16) -> String {
-    use ratatui::Terminal;
-    use ratatui::backend::TestBackend;
-    let backend = TestBackend::new(width, height);
-    let mut terminal = Terminal::new(backend).expect("terminal");
-    terminal.draw(|f| app.draw(f)).expect("draw");
-    let buf = terminal.backend().buffer();
-    let mut out = String::new();
-    for y in 0..height {
-        for x in 0..width {
-            out.push_str(buf[(x, y)].symbol());
-        }
-        out.push('\n');
-    }
-    out
 }
 
 #[cfg(test)]

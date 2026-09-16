@@ -1,29 +1,49 @@
-use crate::adapters::{http_get_json, json_f64};
+use crate::accounts::Pointer;
+use crate::adapters::{http_get_json, json_f64, pointer_secret};
 use crate::credentials::Credentials;
 use crate::domain::{ProviderStatus, QuotaWindow, WindowLabel};
-use crate::providers::{FetchFuture, Provider, RefreshPolicy, glyph_ascii};
+use crate::providers::{AccountIdentity, FetchFuture, Provider, RefreshPolicy};
 use chrono::{DateTime, TimeZone, Utc};
 use serde_json::Value;
 
 pub const ZAI_QUOTA_URL: &str = "https://api.z.ai/api/monitor/usage/quota/limit";
 
 pub struct ZaiAdapter {
+    ident: AccountIdentity,
     key: Option<String>,
+    hint: String,
     recorded: Option<Value>,
 }
 
 impl ZaiAdapter {
-    pub fn from_credentials(c: &Credentials) -> Self {
+    pub fn from_account(c: &Credentials, ident: AccountIdentity, pointer: &Pointer) -> Self {
+        let hint = match pointer {
+            Pointer::Env(k) => format!("export {k}"),
+            Pointer::File(p) => format!("missing {p}"),
+        };
         Self {
-            key: c.env("ZAI_API_KEY").map(str::to_string),
+            ident,
+            key: pointer_secret(c, pointer, &["api_key", "access_token"]),
+            hint,
             recorded: None,
         }
     }
 
     #[cfg(test)]
+    pub fn from_credentials(c: &Credentials) -> Self {
+        Self::from_account(
+            c,
+            AccountIdentity::vendor_default("zai", "z.ai"),
+            &Pointer::Env("ZAI_API_KEY".into()),
+        )
+    }
+
+    #[cfg(test)]
     pub fn with_recorded(json: Value) -> Self {
         Self {
+            ident: AccountIdentity::vendor_default("zai", "z.ai"),
             key: Some("redacted".into()),
+            hint: "export ZAI_API_KEY".into(),
             recorded: Some(json),
         }
     }
@@ -45,7 +65,7 @@ pub fn map_zai_quota(v: &Value) -> ProviderStatus {
     let mut windows = Vec::new();
     for item in limits {
         let kind = item.get("type").and_then(|x| x.as_str()).unwrap_or("");
-        if kind != "TOKENS_LIMIT" {
+        if kind != "TOKENS_LIMIT" && kind != "CREDIT_LIMIT" {
             continue;
         }
         let unit = json_f64(&item["unit"]).unwrap_or(0.0) as u32;
@@ -56,7 +76,7 @@ pub fn map_zai_quota(v: &Value) -> ProviderStatus {
         let resets = item.get("nextResetTime").and_then(ms);
         let (label, mins) = match (unit, number) {
             (3, 5) => (WindowLabel::FiveHour, Some(300)),
-            (6, 7) => (WindowLabel::Weekly, Some(10080)),
+            (6, 7) | (6, 1) => (WindowLabel::Weekly, Some(10080)),
             _ => continue,
         };
         windows.push(QuotaWindow::from_used_percent(
@@ -80,14 +100,14 @@ pub fn map_zai_quota(v: &Value) -> ProviderStatus {
 }
 
 impl Provider for ZaiAdapter {
-    fn id(&self) -> &'static str {
-        "zai"
+    fn id(&self) -> &str {
+        &self.ident.id
     }
-    fn display_name(&self) -> &'static str {
-        "z.ai"
+    fn display_name(&self) -> &str {
+        &self.ident.label
     }
-    fn glyph_ascii(&self) -> &'static str {
-        glyph_ascii("zai")
+    fn vendor(&self) -> &str {
+        self.ident.vendor
     }
     fn docs_url(&self) -> Option<&'static str> {
         Some("https://docs.z.ai/devpack/usage-policy")
@@ -97,10 +117,9 @@ impl Provider for ZaiAdapter {
     }
     fn fetch(&self) -> FetchFuture {
         if self.key.is_none() && self.recorded.is_none() {
-            return Box::pin(async {
-                ProviderStatus::NotConfigured {
-                    hint: "export ZAI_API_KEY".into(),
-                }
+            let hint = self.hint.clone();
+            return Box::pin(async move {
+                ProviderStatus::NotConfigured { hint }
             });
         }
         if let Some(v) = self.recorded.clone() {

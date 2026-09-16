@@ -1,10 +1,11 @@
+use crate::accounts::Pointer;
 use crate::adapters::codex_rpc::read_rate_limits;
 use crate::adapters::json_f64;
 use crate::credentials::Credentials;
 use crate::domain::{
     CreditUnit, ExtraCredits, ProviderStatus, QuotaWindow, SESSION_MAX_MINS, WindowLabel,
 };
-use crate::providers::{FetchFuture, Provider, RefreshPolicy, glyph_ascii};
+use crate::providers::{AccountIdentity, FetchFuture, Provider, RefreshPolicy};
 use chrono::{DateTime, TimeZone, Utc};
 use serde_json::Value;
 use std::path::PathBuf;
@@ -12,6 +13,7 @@ use tokio::io::BufReader;
 use tokio::process::Command;
 
 pub struct CodexAdapter {
+    ident: AccountIdentity,
     configured: bool,
     recorded: Option<Value>,
     program: String,
@@ -19,15 +21,21 @@ pub struct CodexAdapter {
 }
 
 impl CodexAdapter {
-    pub fn from_credentials(c: &Credentials) -> Self {
-        let home_auth = c.home().join(".codex").join("auth.json");
-        let configured = c.env("CODEX_API_KEY").is_some() || home_auth.is_file();
+    pub fn from_account(c: &Credentials, ident: AccountIdentity, pointer: &Pointer) -> Self {
+        let configured = match pointer {
+            Pointer::Env(k) => c.env(k).is_some(),
+            Pointer::File(p) => {
+                let path = c.resolve_path(p);
+                path.is_file() || path.join("auth.json").is_file()
+            }
+        };
         let program = c
             .env("CODEX_BIN")
             .map(str::to_string)
             .or_else(|| std::env::var("CODEX_BIN").ok())
             .unwrap_or_else(|| "codex".into());
         Self {
+            ident,
             configured,
             recorded: None,
             program,
@@ -36,8 +44,18 @@ impl CodexAdapter {
     }
 
     #[cfg(test)]
+    pub fn from_credentials(c: &Credentials) -> Self {
+        Self::from_account(
+            c,
+            AccountIdentity::vendor_default("codex", "Codex"),
+            &Pointer::File(".codex/auth.json".into()),
+        )
+    }
+
+    #[cfg(test)]
     pub fn with_recorded(json: Value) -> Self {
         Self {
+            ident: AccountIdentity::vendor_default("codex", "Codex"),
             configured: true,
             recorded: Some(json),
             program: "codex".into(),
@@ -48,6 +66,7 @@ impl CodexAdapter {
     #[cfg(test)]
     pub fn with_command(program: String, args: Vec<String>) -> Self {
         Self {
+            ident: AccountIdentity::vendor_default("codex", "Codex"),
             configured: true,
             recorded: None,
             program,
@@ -152,14 +171,14 @@ async fn invoke_app_server(program: &str, args: &[String]) -> Result<Value, Stri
 }
 
 impl Provider for CodexAdapter {
-    fn id(&self) -> &'static str {
-        "codex"
+    fn id(&self) -> &str {
+        &self.ident.id
     }
-    fn display_name(&self) -> &'static str {
-        "Codex"
+    fn display_name(&self) -> &str {
+        &self.ident.label
     }
-    fn glyph_ascii(&self) -> &'static str {
-        glyph_ascii("codex")
+    fn vendor(&self) -> &str {
+        self.ident.vendor
     }
     fn docs_url(&self) -> Option<&'static str> {
         Some("https://developers.openai.com/codex/")

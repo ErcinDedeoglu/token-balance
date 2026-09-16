@@ -6,7 +6,7 @@ use crate::layout::{clip, wrap_words};
 use crate::theme::{Theme, eighth_bar, unknown_bar};
 use chrono::{DateTime, Utc};
 use ratatui::Frame;
-use ratatui::layout::{Constraint, Layout, Rect};
+use ratatui::layout::{Alignment, Constraint, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph};
@@ -60,6 +60,9 @@ pub fn render_card(
                 theme,
                 now,
             );
+        }
+        Some(av) if snap.ledger == LedgerKind::PrepaidWallet => {
+            paint_prepaid(frame, &rows, snap, av.extra.as_ref(), theme, now);
         }
         _ => paint_unsigned(frame, &rows, snap, theme),
     }
@@ -141,6 +144,50 @@ fn paint_available(
     };
     let last = rows.len().saturating_sub(1);
     frame.render_widget(Paragraph::new(foot).style(foot_style), rows[last]);
+}
+
+fn paint_prepaid(
+    frame: &mut Frame<'_>,
+    rows: &[Rect],
+    snap: &ProviderSnapshot,
+    extra: Option<&crate::domain::ExtraCredits>,
+    theme: Theme,
+    now: DateTime<Utc>,
+) {
+    let last = rows.len().saturating_sub(1);
+    if let Some(ex) = extra {
+        let hero = match ex.unit {
+            crate::domain::CreditUnit::Usd => format!("${:.2}", ex.remaining),
+            crate::domain::CreditUnit::Credits => format!("{} cr", ex.remaining as i64),
+            crate::domain::CreditUnit::Unknown => extra_line(ex),
+        };
+        let body = last.saturating_sub(1);
+        let mid = body / 2;
+        frame.render_widget(
+            Paragraph::new(clip(&hero, rows[mid].width as usize))
+                .alignment(Alignment::Center)
+                .style(
+                    Style::default()
+                        .fg(theme.extra)
+                        .add_modifier(Modifier::BOLD),
+                ),
+            rows[mid],
+        );
+        let cap = mid + 1;
+        if cap < last {
+            frame.render_widget(
+                Paragraph::new("prepaid   no reset")
+                    .alignment(Alignment::Center)
+                    .style(Style::default().fg(theme.label)),
+                rows[cap],
+            );
+        }
+    }
+    frame.render_widget(
+        Paragraph::new(format!(" {}", format_age(now, snap.fetched_at)))
+            .style(Style::default().fg(theme.dim)),
+        rows[last],
+    );
 }
 
 fn paint_unsigned(frame: &mut Frame<'_>, rows: &[Rect], snap: &ProviderSnapshot, theme: Theme) {

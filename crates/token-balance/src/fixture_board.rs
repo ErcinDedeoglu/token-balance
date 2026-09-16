@@ -53,6 +53,7 @@ pub(crate) fn mixed_specs(clock: &Arc<dyn Clock>, error_codex: bool) -> Vec<Fixt
         fp(
             "codex",
             "Codex",
+            "codex",
             Some("https://developers.openai.com/codex/"),
             clock,
             codex_spec,
@@ -60,6 +61,7 @@ pub(crate) fn mixed_specs(clock: &Arc<dyn Clock>, error_codex: bool) -> Vec<Fixt
         fp(
             "grok",
             "Grok",
+            "grok",
             Some("https://grok.com"),
             clock,
             Spec::Available {
@@ -76,6 +78,7 @@ pub(crate) fn mixed_specs(clock: &Arc<dyn Clock>, error_codex: bool) -> Vec<Fixt
         fp(
             "claude",
             "Claude",
+            "claude",
             Some("https://docs.anthropic.com/"),
             clock,
             Spec::Available {
@@ -92,6 +95,7 @@ pub(crate) fn mixed_specs(clock: &Arc<dyn Clock>, error_codex: bool) -> Vec<Fixt
         fp(
             "kimi",
             "Kimi",
+            "kimi",
             Some("https://www.kimi.com/en/help/kimi-code/benefits"),
             clock,
             Spec::Available {
@@ -108,6 +112,7 @@ pub(crate) fn mixed_specs(clock: &Arc<dyn Clock>, error_codex: bool) -> Vec<Fixt
         fp(
             "zai",
             "z.ai",
+            "zai",
             Some("https://docs.z.ai/devpack/usage-policy"),
             clock,
             Spec::NotConfigured {
@@ -117,6 +122,7 @@ pub(crate) fn mixed_specs(clock: &Arc<dyn Clock>, error_codex: bool) -> Vec<Fixt
         fp(
             "muse",
             "Muse",
+            "muse",
             Some("https://ai.developer.meta.com/docs/muse-code/subscriptions/"),
             clock,
             Spec::Unsupported {
@@ -140,6 +146,7 @@ pub(crate) fn unsigned_specs(clock: &Arc<dyn Clock>) -> Vec<FixtureProvider> {
         fp(
             id,
             name,
+            id,
             None,
             clock,
             Spec::NotConfigured { hint: hint.into() },
@@ -174,4 +181,100 @@ pub(crate) fn danger_specs(clock: &Arc<dyn Clock>) -> Vec<FixtureProvider> {
             p
         })
         .collect()
+}
+
+pub(crate) fn multi_specs(clock: &Arc<dyn Clock>) -> Vec<FixtureProvider> {
+    let claude = |id: &str, label: &str, used: f32| {
+        fp(
+            id,
+            label,
+            "claude",
+            Some("https://docs.anthropic.com/"),
+            clock,
+            Spec::Available {
+                plan: Some("Max 20x".into()),
+                windows: spec_session_weekly(
+                    used,
+                    Duration::minutes(125),
+                    59.0,
+                    Duration::hours(131),
+                ),
+                extra: None,
+            },
+        )
+    };
+    let kimi = |id: &str, label: &str, used: f32| {
+        fp(
+            id,
+            label,
+            "kimi",
+            Some("https://www.kimi.com/en/help/kimi-code/benefits"),
+            clock,
+            Spec::Available {
+                plan: Some("Moderato".into()),
+                windows: spec_session_weekly(
+                    used,
+                    Duration::minutes(220),
+                    12.0,
+                    Duration::hours(145),
+                ),
+                extra: None,
+            },
+        )
+    };
+    vec![
+        claude("claude-work", "work", 28.0),
+        claude("claude-home", "home", 40.0),
+        kimi("kimi-team", "kimi team", 45.0),
+        kimi("kimi-solo", "kimi solo", 50.0),
+        fp(
+            "codex",
+            "codex",
+            "codex",
+            Some("https://developers.openai.com/codex/"),
+            clock,
+            Spec::Available {
+                plan: Some("Plus".into()),
+                windows: spec_session_weekly(82.0, Duration::minutes(72), 37.0, Duration::hours(98)),
+                extra: None,
+            },
+        ),
+        fp(
+            "grok",
+            "grok",
+            "grok",
+            Some("https://grok.com"),
+            clock,
+            Spec::Available {
+                plan: Some("SuperGrok".into()),
+                windows: vec![WindowSpec {
+                    label: WindowLabel::Weekly,
+                    used_percent: 73.0,
+                    resets_in: Duration::hours(76),
+                    duration_mins: Some(10080),
+                }],
+                extra: None,
+            },
+        ),
+        fp(
+            "zai",
+            "z.ai",
+            "zai",
+            Some("https://docs.z.ai/devpack/usage-policy"),
+            clock,
+            Spec::NotConfigured {
+                hint: "export ZAI_API_KEY".into(),
+            },
+        ),
+        fp(
+            "muse",
+            "muse",
+            "muse",
+            Some("https://ai.developer.meta.com/docs/muse-code/subscriptions/"),
+            clock,
+            Spec::Unsupported {
+                reason: "no remaining API; polling burns Everyday requests".into(),
+            },
+        ),
+    ]
 }

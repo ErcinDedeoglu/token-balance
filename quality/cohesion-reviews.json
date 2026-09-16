@@ -23,6 +23,30 @@
       "concern": "staged-file quality gate parsed from the contract",
       "rationale": "One fail-closed hook: parse QUALITY.md, ignore, baseline, and reviews, then apply size, name, and root rules. Splitting parser from checks would let a partial gate go green.",
       "kind": "keep-cohesive"
+    },
+    {
+      "path": "crates/token-balance/src/tui.rs",
+      "class": "source",
+      "sha256": "07f10555b40005ab2fd3a5aca3391d562ba1f42c9a1f3c245183417082969414",
+      "concern": "board App event loop and selection",
+      "rationale": "App owns snapshots, selection, overlay, refresh queue, and input. Keys, mouse, and r-reload all mutate the same selected_id and provider list; extracting one handler would split that state.",
+      "kind": "keep-cohesive"
+    },
+    {
+      "path": "crates/token-balance/src/tui_test.rs",
+      "class": "test",
+      "sha256": "e574c7fb8c7218bbac6be142f420a7a5c84915640eeaefd32ff14ee28000c007",
+      "concern": "board App interaction tests",
+      "rationale": "These tests drive one App through keys, mouse, overlays, and live-config reload. Splitting would duplicate mixed_app bootstrap and hide selection regressions.",
+      "kind": "keep-cohesive"
+    },
+    {
+      "path": "crates/token-balance/src/adapters_test.rs",
+      "class": "test",
+      "sha256": "4f0c865238aaa93db1ae3f6958c1906a6efb41d7a9b836c95ab9343b085ccd93",
+      "concern": "live adapter mapper fixtures",
+      "rationale": "One suite maps vendor JSON into domain status with shared helpers. Per-vendor files already exist for large adapters; remaining cases stay here so mapper regressions share one harness.",
+      "kind": "keep-cohesive"
     }
   ]
 }

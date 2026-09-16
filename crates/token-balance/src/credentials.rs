@@ -39,8 +39,23 @@ impl Credentials {
     }
 
     pub fn read_to_string(&self, rel: &str) -> Option<String> {
-        let path = self.home.join(rel);
-        std::fs::read_to_string(path).ok()
+        std::fs::read_to_string(self.resolve_path(rel)).ok()
+    }
+
+    pub fn resolve_path(&self, spec: &str) -> PathBuf {
+        let spec = spec.trim();
+        if spec == "~" {
+            return self.home.clone();
+        }
+        if let Some(rest) = spec.strip_prefix("~/") {
+            return self.home.join(rest);
+        }
+        let p = Path::new(spec);
+        if p.is_absolute() {
+            p.to_path_buf()
+        } else {
+            self.home.join(p)
+        }
     }
 }
 
