@@ -59,6 +59,12 @@ pub const INIT_TEMPLATE: &str = "\
 # id = \"fal\"
 # label = \"fal\"
 # api_key_env = \"FAL_KEY\"
+#
+# [[account]]
+# vendor = \"copilot\"
+# id = \"copilot\"
+# label = \"copilot\"
+# credentials = \"gh\"
 ";
 
 const INLINE_KEYS: &[&str] = &[
@@ -84,6 +90,7 @@ pub enum Vendor {
     Muse,
     MuseWeb,
     Fal,
+    Copilot,
 }
 
 impl Vendor {
@@ -99,6 +106,7 @@ impl Vendor {
             "muse" => Ok(Self::Muse),
             "muse-web" => Ok(Self::MuseWeb),
             "fal" => Ok(Self::Fal),
+            "copilot" => Ok(Self::Copilot),
             other => Err(format!("unknown vendor '{other}'")),
         }
     }
@@ -115,6 +123,7 @@ impl Vendor {
             Self::Muse => "muse",
             Self::MuseWeb => "muse-web",
             Self::Fal => "fal",
+            Self::Copilot => "copilot",
         }
     }
 }

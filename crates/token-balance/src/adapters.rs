@@ -1,6 +1,7 @@
 mod claude;
 mod codex;
 mod codex_rpc;
+mod copilot;
 mod deepseek;
 mod fal;
 mod grok;
@@ -12,6 +13,7 @@ mod zai;
 
 pub use claude::ClaudeAdapter;
 pub use codex::CodexAdapter;
+pub use copilot::CopilotAdapter;
 pub use deepseek::DeepseekAdapter;
 pub use fal::FalAdapter;
 pub use grok::GrokAdapter;
@@ -92,6 +94,7 @@ fn adapter_from_row(creds: &Credentials, row: AccountRow) -> Arc<dyn Provider> {
         Vendor::Muse => Arc::new(MuseAdapter::from_account(creds, id, &row.pointer, true)),
         Vendor::MuseWeb => Arc::new(MuseWebAdapter::from_account(creds, id, &row.pointer)),
         Vendor::Fal => Arc::new(FalAdapter::from_account(creds, id, &row.pointer)),
+        Vendor::Copilot => Arc::new(CopilotAdapter::from_account(creds, id, &row.pointer)),
     }
 }
 
