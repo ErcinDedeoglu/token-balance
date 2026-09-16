@@ -6,6 +6,7 @@ mod grok;
 mod kiro;
 mod kimi;
 mod muse;
+mod muse_web;
 mod zai;
 
 pub use claude::ClaudeAdapter;
@@ -15,6 +16,7 @@ pub use grok::GrokAdapter;
 pub use kiro::KiroAdapter;
 pub use kimi::KimiAdapter;
 pub use muse::MuseAdapter;
+pub use muse_web::MuseWebAdapter;
 pub use zai::ZaiAdapter;
 
 #[cfg(test)]
@@ -86,6 +88,7 @@ fn adapter_from_row(creds: &Credentials, row: AccountRow) -> Arc<dyn Provider> {
         Vendor::Kiro => Arc::new(KiroAdapter::from_account(creds, id, &row.pointer)),
         Vendor::Deepseek => Arc::new(DeepseekAdapter::from_account(creds, id, &row.pointer)),
         Vendor::Muse => Arc::new(MuseAdapter::from_account(creds, id, &row.pointer, true)),
+        Vendor::MuseWeb => Arc::new(MuseWebAdapter::from_account(creds, id, &row.pointer)),
     }
 }
 

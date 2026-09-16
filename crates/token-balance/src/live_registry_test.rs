@@ -202,3 +202,36 @@ credentials = ".config/muse/auth.json"
         other => panic!("{other:?}"),
     }
 }
+
+#[tokio::test]
+async fn listed_muse_web_is_separate_from_muse() {
+    let home = acct_home();
+    write_toml(
+        &home,
+        r#"
+[[account]]
+vendor = "muse"
+id = "muse"
+label = "muse"
+credentials = ".config/muse/auth.json"
+
+[[account]]
+vendor = "muse-web"
+id = "muse-web"
+label = "muse web"
+credentials = ".config/token-balance/muse-web.json"
+"#,
+    );
+    let list = live_registry(&Credentials::isolated(home, BTreeMap::new()), false).unwrap();
+    assert_eq!(list.len(), 2);
+    assert_eq!(list[0].vendor(), "muse");
+    assert_eq!(list[0].glyph_ascii(), "M");
+    assert_eq!(list[1].vendor(), "muse-web");
+    assert_eq!(list[1].glyph_ascii(), "W");
+    match list[1].fetch().await {
+        ProviderStatus::NotConfigured { hint } => {
+            assert!(hint.contains("muse-web.json"), "{hint}");
+        }
+        other => panic!("{other:?}"),
+    }
+}
