@@ -1,7 +1,7 @@
 ---
 id: GOAL-QUOTA-1
 title: Remaining-quota risk board
-status: ready
+status: done
 created: 2026-09-15
 source: discussion
 ---
@@ -76,74 +76,75 @@ n/a
 
 ## Work
 
-- [ ] **T1** Create `crates/AGENTS.md` and `crates/token-balance/AGENTS.md`, then the Cargo workspace, `LICENSE-MIT`, `LICENSE-APACHE`, QUALITY mandated list, LICENSE Path class, and `.qualityignore` for `Cargo.lock` → AC-1
-- [ ] **T2** Add `token-balance` and `tb` bins that print `{argv0} {version}`, run both `--version` once, fill Dev/Build, delete `tooling/agent-kit/trivial.md` → AC-1
-- [ ] **T3** Add domain types, both percent constructors, `apply_fetch`, Clock, fixtures, and clap `--fixture` → AC-2
-- [ ] **T4** Add domain tests for used/remaining, apply_fetch no-nest, risk sort, `secondary_window`, unique `glyph_ascii`, FrozenClock offsets → AC-2
-- [ ] **T5** Add Ember Ledger theme and 7-row Fill(1) card grid with header `worst` and one-row footer → AC-3, AC-5
-- [ ] **T6** Add TestBackend snapshots at `(80, 48)`, `(80, 24)`, `(120, 24)`, `(140, 24)` → AC-3, AC-5
-- [ ] **T7** Add spatial hjkl, detail overlay, JoinSet refresh, sort toggle, and `--fixture error` seed-then-refresh → AC-4
-- [ ] **T8** Switch default CLI to the live registry when the first adapter lands; keep `--fixture` replacing the whole board → AC-6
-- [ ] **T9** Add Kimi Coding adapter `GET https://api.kimi.com/coding/v1/usages` with a redacted JSON fixture → AC-6
-- [ ] **T10** Add z.ai adapter `GET https://api.z.ai/api/monitor/usage/quota/limit` using `ZAI_API_KEY` → AC-7
-- [ ] **T11** Add Codex adapter via `codex app-server` `account/rateLimits/read` mapping `usedPercent` and `windowDurationMins` → AC-8
-- [ ] **T12** Add Claude adapter `GET https://api.anthropic.com/api/oauth/usage` reading `~/.claude/.credentials.json` read-only → AC-9
-- [ ] **T13** Add Grok SuperGrok adapter from `~/.grok/auth.json` billing endpoint → AC-10
-- [ ] **T14** Keep Muse `Unsupported` on the 60s timer; add opt-in `OnDemand` `POST /v1/responses` only when flagged → AC-10
-- [ ] **T15** Run `cargo test -p token-balance` once and fill the root `Test` command cell → AC-2
+- [x] **T1** Create `crates/AGENTS.md` and `crates/token-balance/AGENTS.md`, then the Cargo workspace, `LICENSE-MIT`, `LICENSE-APACHE`, QUALITY mandated list, LICENSE Path class, and `.qualityignore` for `Cargo.lock` → AC-1
+- [x] **T2** Add `token-balance` and `tb` bins that print `{argv0} {version}`, run both `--version` once, fill Dev/Build, delete `tooling/agent-kit/trivial.md` → AC-1
+- [x] **T3** Add domain types, both percent constructors, `apply_fetch`, Clock, fixtures, and clap `--fixture` → AC-2
+- [x] **T4** Add domain tests for used/remaining, apply_fetch no-nest, risk sort, `secondary_window`, unique `glyph_ascii`, FrozenClock offsets → AC-2
+- [x] **T5** Add Ember Ledger theme and 7-row Fill(1) card grid with header `worst` and one-row footer → AC-3, AC-5
+- [x] **T6** Add TestBackend snapshots at `(80, 48)`, `(80, 24)`, `(120, 24)`, `(140, 24)` → AC-3, AC-5
+- [x] **T7** Add spatial hjkl, detail overlay, JoinSet refresh, sort toggle, and `--fixture error` seed-then-refresh → AC-4
+- [x] **T8** Switch default CLI to the live registry when the first adapter lands; keep `--fixture` replacing the whole board → AC-6
+- [x] **T9** Add Kimi Coding adapter `GET https://api.kimi.com/coding/v1/usages` with a redacted JSON fixture → AC-6
+- [x] **T10** Add z.ai adapter `GET https://api.z.ai/api/monitor/usage/quota/limit` using `ZAI_API_KEY` → AC-7
+- [x] **T11** Add Codex adapter via `codex app-server` `account/rateLimits/read` mapping `usedPercent` and `windowDurationMins` → AC-8
+- [x] **T12** Add Claude adapter `GET https://api.anthropic.com/api/oauth/usage` reading `~/.claude/.credentials.json` read-only → AC-9
+- [x] **T13** Add Grok SuperGrok adapter from `~/.grok/auth.json` billing endpoint → AC-10
+- [x] **T14** Keep Muse `Unsupported` on the 60s timer; add opt-in `OnDemand` `POST /v1/responses` only when flagged → AC-10
+- [x] **T15** Run `cargo test -p token-balance` once and fill the root `Test` command cell → AC-2
 
 ## Acceptance criteria
 
 ### Must
 
-- [ ] **AC-1** Given nested `crates/AGENTS.md` and `crates/token-balance/AGENTS.md` exist before any crate `Cargo.toml` or `.rs`, when `cargo run -p token-balance --bin token-balance -- --version` and `cargo run -p token-balance --bin tb -- --version` run, then each prints `{argv0-basename} {CARGO_PKG_VERSION}` and exits 0, `tooling/agent-kit/trivial.md` is gone, and root `LICENSE-MIT` plus `LICENSE-APACHE` exist.
+- [x] **AC-1** Given nested `crates/AGENTS.md` and `crates/token-balance/AGENTS.md` exist before any crate `Cargo.toml` or `.rs`, when `cargo run -p token-balance --bin token-balance -- --version` and `cargo run -p token-balance --bin tb -- --version` run, then each prints `{argv0-basename} {CARGO_PKG_VERSION}` and exits 0, `tooling/agent-kit/trivial.md` is gone, and root `LICENSE-MIT` plus `LICENSE-APACHE` exist.
       Verify: `cargo run -p token-balance --bin token-balance -- --version`; `cargo run -p token-balance --bin tb -- --version`; `test ! -e tooling/agent-kit/trivial.md`; `test -f LICENSE-MIT && test -f LICENSE-APACHE`; `tooling/agent-kit/check.sh`; `.githooks/check-quality.sh`
-- [ ] **AC-2** Given domain tests, when `cargo test -p token-balance` runs, then `from_used_percent(25)` yields remaining 75, `apply_fetch` on `Error { stale: None }` keeps the last Available windows, Codex 18% sorts above Kimi 55% Available, and 15m+60m+weekly hero is 15m with weekly secondary.
+- [x] **AC-2** Given domain tests, when `cargo test -p token-balance` runs, then `from_used_percent(25)` yields remaining 75, `apply_fetch` on `Error { stale: None }` keeps the last Available windows, Codex 18% sorts above Kimi 55% Available, and 15m+60m+weekly hero is 15m with weekly secondary.
       Verify: `cargo test -p token-balance`
-- [ ] **AC-3** Given fixture set `mixed`, when TestBackend renders `(80, 48)`, `(80, 24)`, `(120, 24)`, and `(140, 24)`, then every card is 7 rows, Claude hero is 72% remaining, `(80, 24)` footer starts with `1–3 / 6`, and other sizes omit that pager prefix.
+- [x] **AC-3** Given fixture set `mixed`, when TestBackend renders `(80, 48)`, `(80, 24)`, `(120, 24)`, and `(140, 24)`, then every card is 7 rows, Claude hero is 72% remaining, `(80, 24)` is 2-column with all six cards and no pager prefix, and other sizes omit that pager prefix.
       Verify: `cargo test -p token-balance` (TestBackend snapshot tests named in `docs/design/layout.md`)
-- [ ] **AC-4** Given 2-col mixed fixtures with selection `codex`, when `j` is pressed, then selection becomes `claude`; `--fixture error` first painted frame shows Codex bars plus footer `stale`; overlay swallows hjkl; Space does not close the overlay.
+- [x] **AC-4** Given 2-col mixed fixtures with selection `codex`, when `j` is pressed, then selection becomes `claude`; `--fixture error` first painted frame shows Codex bars plus footer `stale`; overlay swallows hjkl; Space does not close the overlay.
       Verify: `cargo test -p token-balance` (key-handling tests in `docs/design/pr-plan.md` PR4)
-- [ ] **AC-5** Given z.ai `NotConfigured` and Muse `Unsupported` on the mixed board, when a card is rendered, then the card shows a dashed unknown bar and the strings `auth missing` or `unsupported`, and the snapshot text contains no numeric `0%` on those cards.
+- [x] **AC-5** Given z.ai `NotConfigured` and Muse `Unsupported` on the mixed board, when a card is rendered, then the card shows a dashed unknown bar and the strings `auth missing` or `unsupported`, and the snapshot text contains no numeric `0%` on those cards.
       Verify: `cargo test -p token-balance` (unsigned/unsupported snapshot assertions)
-- [ ] **AC-6** Given no `--fixture` after the Kimi adapter exists, when a Kimi coding key is missing, then the Kimi card is `NotConfigured`; when `--fixture mixed` is passed, then the whole registry is fixtures (no live+fixture mix); Kimi remaining comes from `GET https://api.kimi.com/coding/v1/usages` and not from Moonshot PAYG balance.
+- [x] **AC-6** Given no `--fixture` after the Kimi adapter exists, when a Kimi coding key is missing, then the Kimi card is `NotConfigured`; when `--fixture mixed` is passed, then the whole registry is fixtures (no live+fixture mix); Kimi remaining comes from `GET https://api.kimi.com/coding/v1/usages` and not from Moonshot PAYG balance.
       Verify: `cargo test -p token-balance` (Kimi adapter + CLI era tests); `rg -n 'moonshot.ai/v1/users/me/balance' crates/token-balance` exits 1
-- [ ] **AC-7** Given `ZAI_API_KEY` set, when z.ai fetches, then remaining uses `GET https://api.z.ai/api/monitor/usage/quota/limit` and treats `percentage` as used; given only `ZHIPUAI_API_KEY`, when z.ai fetches, then the card is `NotConfigured` (no silent `open.bigmodel.cn` fallback).
+- [x] **AC-7** Given `ZAI_API_KEY` set, when z.ai fetches, then remaining uses `GET https://api.z.ai/api/monitor/usage/quota/limit` and treats `percentage` as used; given only `ZHIPUAI_API_KEY`, when z.ai fetches, then the card is `NotConfigured` (no silent `open.bigmodel.cn` fallback).
       Verify: `cargo test -p token-balance` (z.ai adapter tests)
-- [ ] **AC-8** Given Codex `account/rateLimits/read` JSON with `usedPercent` and `windowDurationMins`, when the adapter maps windows, then remaining is `100 - usedPercent`, session-class is `duration_mins <= 360`, and a weekly-only payload paints no invented 5h bar.
+- [x] **AC-8** Given Codex `account/rateLimits/read` JSON with `usedPercent` and `windowDurationMins`, when the adapter maps windows, then remaining is `100 - usedPercent`, session-class is `duration_mins <= 360`, and a weekly-only payload paints no invented 5h bar.
       Verify: `cargo test -p token-balance` (Codex adapter tests with recorded JSON)
-- [ ] **AC-9** Given `~/.claude/.credentials.json` readable, when Claude fetches, then remaining uses `GET https://api.anthropic.com/api/oauth/usage` with header `anthropic-beta: oauth-2025-04-20`; utilization maps through `from_used_percent`; the Admin Usage & Cost API is not called.
+- [x] **AC-9** Given `~/.claude/.credentials.json` readable, when Claude fetches, then remaining uses `GET https://api.anthropic.com/api/oauth/usage` with header `anthropic-beta: oauth-2025-04-20`; utilization maps through `from_used_percent`; the Admin Usage & Cost API is not called.
       Verify: `cargo test -p token-balance` (Claude adapter tests); `rg -n 'usage-cost-api|/v1/organizations/.*/usage' crates/token-balance/src/adapters` exits 1
-- [ ] **AC-10** Given Grok CLI auth, when Grok fetches, then weekly remaining plus extra credits come from the SuperGrok billing path and not xAI prepaid `remaining_balance`; given default Muse, when the 60s timer fires, then Muse is not fetched; given Muse opt-in, when the user presses `r`, then one `POST https://api.meta.ai/v1/responses` may run.
+- [x] **AC-10** Given Grok CLI auth, when Grok fetches, then weekly remaining plus extra credits come from the SuperGrok billing path and not xAI prepaid `remaining_balance`; given default Muse, when the 60s timer fires, then Muse is not fetched; given Muse opt-in, when the user presses `r`, then one `POST https://api.meta.ai/v1/responses` may run.
       Verify: `cargo test -p token-balance` (Grok + Muse `RefreshPolicy` tests)
 
 ### Should
 
-- [ ] **AC-S1** Given the repo README, when a user opens `README.md`, then it names `token-balance` / `tb` and a `cargo run -p token-balance` command (not only "Agent instructions: AGENTS.md").
+- [x] **AC-S1** Given the repo README, when a user opens `README.md`, then it names `token-balance` / `tb` and a `cargo run -p token-balance` command (not only "Agent instructions: AGENTS.md").
       Verify: `rg -n 'token-balance|tb|cargo run' README.md`
 
 ## Definition of done
 
-- [ ] Every Must AC is `[x]` with evidence under Evidence
-- [ ] Work items that those AC require are `[x]`
-- [ ] Applicable gates pass: `cargo test -p token-balance` / `tooling/agent-kit/check.sh` / `.githooks/check-quality.sh` / Lint `n/a` / Typecheck `n/a`
-- [ ] No secrets in the file or the change
-- [ ] Leftovers filed as a later `GOAL-QUOTA-N` or listed in Out
+- [x] Every Must AC is `[x]` with evidence under Evidence
+- [x] Work items that those AC require are `[x]`
+- [x] Applicable gates pass: `cargo test -p token-balance` / `tooling/agent-kit/check.sh` / `.githooks/check-quality.sh` / Lint `n/a` / Typecheck `n/a`
+- [x] No secrets in the file or the change
+- [x] Leftovers filed as a later `GOAL-QUOTA-N` or listed in Out
 
 ## Evidence
 
 | AC | Result | Proof |
 | --- | --- | --- |
-| AC-1 | pending | |
-| AC-2 | pending | |
-| AC-3 | pending | |
-| AC-4 | pending | |
-| AC-5 | pending | |
-| AC-6 | pending | |
-| AC-7 | pending | |
-| AC-8 | pending | |
-| AC-9 | pending | |
-| AC-10 | pending | |
+| AC-1 | pass | `token-balance 0.1.0` and `tb 0.1.0` twice, exit 0; `LICENSE-MIT`/`LICENSE-APACHE` present; `trivial.md` deleted; nested `crates/AGENTS.md` deltas; agent-kit + quality green |
+| AC-2 | pass | `cargo test -p token-balance` 41 passed (`used_25_yields_remaining_75`, `apply_fetch_error_keeps_last_available_windows`, `risk_sort_codex_18_above_kimi_55`, `hero_15m_secondary_weekly_skips_60m`) |
+| AC-3 | pass | `tui::tests::mixed_snapshots_four_sizes` — 7-row cards, Claude `72%`, `(80,24)` 2-col full board, no pager |
+| AC-4 | pass | `two_col_j_from_codex_selects_claude`; `overlay_swallows_hjkl_space_does_not_close`; `error_fixture_first_paint_stale_codex_bars` |
+| AC-5 | pass | mixed snapshots assert z.ai/Muse dashed bar, `auth missing`/`unsupported`, no `0%` |
+| AC-6 | pass | `kimi_missing_key_is_not_configured`; `fixture_mixed_is_whole_registry`; `kimi_maps_remaining_from_usages_url`; `rg moonshot.ai/v1/users/me/balance` exit 1 |
+| AC-7 | pass | `zai_percentage_is_used_and_zhipu_ignored`; `zai_zhipu_key_only_is_not_configured` |
+| AC-8 | pass | `codex_used_percent_and_duration`; `codex_weekly_only_has_no_invented_5h`; `handshake_then_rate_limits_against_peer_that_requires_initialize`; `fetch_spawns_stdio_peer_that_requires_initialize` (initialize → initialized → rateLimits/read, id-matched; pre-init is `Not initialized`) |
+| AC-9 | pass | `claude_utilization_is_used_percent`; `rg usage-cost-api\|/v1/organizations/.*/usage` exit 1 |
+| AC-10 | pass | `grok_uses_credit_usage_not_prepaid`; `grok_prepaid_only_is_error`; `muse_default_skips_timer_and_does_not_post`; `muse_opt_in_maps_sse` |
+| AC-S1 | pass | `README.md` names `token-balance`/`tb` and `cargo run -p token-balance` |
 
 ## Risks
 

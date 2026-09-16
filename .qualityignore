@@ -2,3 +2,9 @@
 tooling/agent-kit/STATUS.md
 tooling/agent-kit/status.json
 tooling/agent-kit/log/
+
+# Cargo.lock is generated. Config class is 500 lines / 49KB; a real lockfile
+# is thousands of lines. size-baseline.json is shrink-only and cannot absorb
+# dependency PRs. Authorized by token-balance design 2026-09-15.
+Cargo.lock
+

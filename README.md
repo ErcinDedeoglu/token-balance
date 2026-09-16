@@ -1,5 +1,11 @@
 # token-balance
 
-Remaining-quota risk board for AI coding plans. Approved design: [`docs/design/`](docs/design/).
+Remaining-quota risk board for AI coding plans. Binaries: `token-balance` and `tb`.
 
-Agent instructions: AGENTS.md.
+```bash
+cargo run -p token-balance --bin token-balance -- --fixture mixed
+```
+
+Same program: `cargo run -p token-balance --bin tb -- --fixture mixed`.
+
+Approved design: [`docs/design/`](docs/design/). Agent instructions: `AGENTS.md`.

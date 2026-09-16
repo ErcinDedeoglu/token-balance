@@ -53,6 +53,8 @@ First match wins. Unclassified staged files fail `[unclassified-path]`.
 | README.md | doc |
 | **/*.md | doc |
 | **/*.{json,yml,yaml,toml,lock} | config |
+| LICENSE-MIT | doc |
+| LICENSE-APACHE | doc |
 | .gitignore | config |
 | .qualityignore | config |
 | .githooks/** | source |
@@ -72,6 +74,10 @@ Staged files at repository root not in this list fail `[no-loose-files]`. Adding
 | GEMINI.md |
 | README.md |
 | opencode.json |
+| Cargo.toml |
+| Cargo.lock |
+| LICENSE-MIT |
+| LICENSE-APACHE |
 | .gitignore |
 | .qualityignore |
 

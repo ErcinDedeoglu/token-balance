@@ -3,7 +3,7 @@
     {
       "path": "AGENTS.md",
       "class": "root-agent-entry",
-      "sha256": "c9f5623a996e279683f6327fc1df1a60e4b078a91fce58e625cdbdff10b9106c",
+      "sha256": "76c31515e8d08330ce1a17173cc056b458676de2b130e3e53c0e5616aee394a8",
       "concern": "root operating-manual index",
       "rationale": "Always-loaded index of commands, pointers, MUST gates, boundaries, and the memory loop. Splitting would scatter the entry file and force every session to reassemble it.",
       "kind": "keep-cohesive"
@@ -11,7 +11,7 @@
     {
       "path": "tooling/agent-kit/check.sh",
       "class": "source",
-      "sha256": "7b11e8dfdc973bd1a3553173a00f438791488d97aa230f6b6908c946e8fa4dd9",
+      "sha256": "1264a1e9be09f57f905dda491345501f1cd4ff0e2a1d747c9f98905c0c1f6929",
       "concern": "deterministic agent-kit structural checker",
       "rationale": "One fail-closed kit gate: presence, caps, adapters, lesson/pattern/daily shape, and growth steer. Extracting checks into multiple scripts would let a partial gate go green.",
       "kind": "keep-cohesive"

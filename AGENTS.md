@@ -7,11 +7,11 @@
 | Task | Command |
 |------|---------|
 | Install | n/a |
-| Dev | n/a |
-| Test | n/a |
+| Dev | `cargo run -p token-balance --bin token-balance -- --fixture mixed` |
+| Test | `cargo test -p token-balance` |
 | Lint | n/a |
 | Typecheck | n/a |
-| Build | n/a |
+| Build | `cargo build -p token-balance` |
 | Quality | `.githooks/check-quality.sh` |
 | Agent kit | `tooling/agent-kit/check.sh` |
 

@@ -396,10 +396,10 @@ print_steer() {
   if (( delta > 0 || fail )); then
   {
     echo "## $ts result=$result growth=$growth +${#added[@]} ~${#modified[@]} -${#deleted[@]} >${#moved[@]}"
-    if ((${#added[@]})); then printf '+ %s\n' "${added[@]}"; fi
-    if ((${#modified[@]})); then printf '~ %s\n' "${modified[@]}"; fi
-    if ((${#deleted[@]})); then printf '- %s\n' "${deleted[@]}"; fi
-    if ((${#moved[@]})); then printf '> %s\n' "${moved[@]}"; fi
+    if ((${#added[@]})); then printf -- '+ %s\n' "${added[@]}"; fi
+    if ((${#modified[@]})); then printf -- '~ %s\n' "${modified[@]}"; fi
+    if ((${#deleted[@]})); then printf -- '- %s\n' "${deleted[@]}"; fi
+    if ((${#moved[@]})); then printf -- '> %s\n' "${moved[@]}"; fi
     echo ""
   } >>"$KIT_STATE/log/$date.md"
   fi

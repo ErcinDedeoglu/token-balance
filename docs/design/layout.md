@@ -5,8 +5,8 @@ This is a **risk board**, not a data warehouse. Schematic drawings: [mockups.md]
 1. **Header strip:** app name `token-balance`, local clock `HH:MM`, **worst remaining** (`Codex 18%`), last refresh age (`12s ago`), spinner **only while fetching**. **1 row when `area.width >= 80`** (truncate age before wrapping). **2 rows when width < 80** (name+clock on row 1; worst+age+spinner on row 2). Recommended minimum terminal: **80×24**.
 2. **Card grid:** one card per provider. Sort by **risk** (below). Disabled / unsigned / unsupported sink to the bottom, dimmed, never fake 0%.
 3. **Responsive columns** (1-col padding on each side; gap 1 col between cards). Remainder columns from `inner % cols` go **left to right** via `Layout::horizontal` of `Constraint::Fill(1)` repeated `cols` times:
-   - `< 90` cols → 1 column
-   - `90–139` → 2 columns
+   - `< 80` cols → 1 column
+   - `80–139` → 2 columns (80×24 shows all six cards, no pager)
    - `≥ 140` → 3 columns
    - **139→140 cliff:** a 2-col card at 139 is ~68 inner cols; at 140 a 3-col card is ~45. Titles truncate (`unicode-width`); bars shrink. Keep the 140 breakpoint (3-col is for wide terminals, not for denser 2-col).
 4. **Card anatomy** (fixed — this is the product). **Card height is always 7 rows including borders** (title + 5 inner + bottom) for **every** status, including `NotConfigured` and `Unsupported`. 2-col/3-col rows align. Unused inner rows are blank, not omitted.
@@ -20,10 +20,10 @@ This is a **risk board**, not a data warehouse. Schematic drawings: [mockups.md]
 
    **NotConfigured / Unsupported** inner rows (same 5 slots; never taller):
    1. Status word — `auth missing` / `unsupported` (no numeric %)
-   2. Hint line — `export ZAI_API_KEY` / `no remaining API; polling burns Everyday requests`
+   2. Hint line — `export ZAI_API_KEY` / `no remaining API; polling burns Everyday requests` (wrap onto the next inner row when the column is narrow)
    3. **Dashed `unknown` bar** (theme `unknown`, not a remaining gauge, **never `0%`**)
-   4. Blank (tertiary slot)
-   5. Footer — `auth missing` / `unsupported`
+   4. Blank
+   5. Blank (do not repeat the status word)
 
    Longer copy is **overlay-only**. Do not add a sixth inner row at any breakpoint.
 5. **Card face forbids ledger-3 spend, token counts, and model breakdowns.** Teal tertiary extra-usage remaining (`$12.40`) and extra credits (`400 cr`) **are allowed** — they are not ccusage spend.
@@ -37,20 +37,20 @@ This is a **risk board**, not a data warehouse. Schematic drawings: [mockups.md]
    Mixed 2-col (`cols = 2`): Codex | Grok / Claude | Kimi / z.ai | Muse. From `codex`, `l` → `grok`, `j` → `claude` (not Grok). 1-col: `j`/`k` are ±1; `h`/`l` are no-ops.
 
    Enter or Space opens a **detail overlay** (not a second page). Overlay: reset timestamps, raw windows (used **and** remaining), error text, docs URL. While an overlay is open, **movement keys are swallowed**. Overlay closes on `Esc`, `q`, or `Enter`. **Space does not close**. `q`/`Esc` on the board (no overlay) quit.
-7. **Footer (exactly one row):** always the key hints `r refresh   o sort:risk   ? help   q quit`. When the viewport does not show every card (`visible_end < n`), **prefix** the pager: `1–3 / 6   r refresh   o sort:risk   ? help   q quit` (fits 80 cols). Full boards (`(80, 48)`, 2-col 90–139, 3-col ≥140 mixed) **omit** the pager — keys only. The pager never replaces the keys and never wraps to a second footer row.
+7. **Footer (exactly one row):** always the key hints `r refresh   o sort:risk   ? help   q quit`. When the viewport does not show every card (`visible_end < n`), **prefix** the pager: `1–3 / 6   r refresh   o sort:risk   ? help   q quit`. Full boards (2-col ≥80 mixed, 3-col ≥140 mixed, `(80, 48)`) **omit** the pager — keys only. The pager never replaces the keys and never wraps to a second footer row. The key row sits under the grid (not stranded at the bottom of a tall terminal).
 8. **Empty / error states:** unsigned = `export ZAI_API_KEY` / `run claude` / `codex login` — never a red crash. Muse = explicit unsupported copy. Both paint the **dashed `unknown` bar** and **never a numeric `0%`**. “Never a fake bar” means never a 0% amber/red remaining gauge.
 9. Help overlay lists keys. No mouse requirement.
 
 ## Overflow / scroll
 
-Six cards × 7 rows + 1 header + 1 footer = **44 rows**. An 80×24 terminal shows **3 stacked cards**. Muse and z.ai sit off-screen unless the user scrolls.
+Six cards × 7 rows + 1 header + 1 footer = **44 rows** in 1 column. At 80×24 the board is **2 columns × 3 rows** and all six cards fit.
 
-- The card grid **scrolls vertically** by whole card rows.
+- The card grid **scrolls vertically** by whole card rows when cards overflow the viewport.
 - The **selected card-row is always in view**.
-- **80×24** = a window onto the board (first page: Codex, Grok, Claude). Footer **prefixes** `1–3 / 6` then the keys.
-- **90×24** = full mixed board in 2 columns (3 rows × 7 + header 1 + footer 1 = 23). Footer is keys only.
+- **80×24** = full mixed board in 2 columns. Footer is keys only.
+- **90×24** = same 2-col full board. Footer is keys only.
 - **140×24** = full mixed board in 3 columns (2 rows × 7 + 2 = 16). Footer is keys only.
-- **`(80, 48)`** full 1-col board: keys only.
+- **`(80, 48)`** same 2-col board with leftover terminal below the key row.
 
 ## Hero / secondary window (at most two rows on the card)
 

@@ -1,0 +1,133 @@
+use crate::adapters::{http_get_json, json_f64};
+use crate::credentials::{Credentials, json_field};
+use crate::domain::{CreditUnit, ExtraCredits, ProviderStatus, QuotaWindow, WindowLabel};
+use crate::providers::{FetchFuture, Provider, RefreshPolicy, glyph_ascii};
+use chrono::{DateTime, Utc};
+use serde_json::Value;
+
+pub const GROK_BILLING_URL: &str = "https://cli-chat-proxy.grok.com/v1/billing?format=credits";
+
+pub struct GrokAdapter {
+    token: Option<String>,
+    recorded: Option<Value>,
+}
+
+impl GrokAdapter {
+    pub fn from_credentials(c: &Credentials) -> Self {
+        let token = c
+            .read_to_string(".grok/auth.json")
+            .and_then(|t| json_field(&t, &["token", "access_token", "accessToken"]));
+        Self {
+            token,
+            recorded: None,
+        }
+    }
+
+    #[cfg(test)]
+    pub fn with_recorded(json: Value) -> Self {
+        Self {
+            token: Some("redacted".into()),
+            recorded: Some(json),
+        }
+    }
+}
+
+fn ts(s: &str) -> Option<DateTime<Utc>> {
+    DateTime::parse_from_rfc3339(s)
+        .ok()
+        .map(|d| d.with_timezone(&Utc))
+}
+
+pub fn map_grok_billing(v: &Value) -> ProviderStatus {
+    let config = v.get("config").unwrap_or(v);
+    let used_pct = json_f64(&config["creditUsagePercent"]).or_else(|| {
+        let used = config.pointer("/onDemandUsed/val").and_then(json_f64);
+        let cap = config.pointer("/onDemandCap/val").and_then(json_f64);
+        match (used, cap) {
+            (Some(u), Some(c)) if c > 0.0 => Some(u / c * 100.0),
+            _ => None,
+        }
+    });
+    let Some(used_pct) = used_pct else {
+        return ProviderStatus::Error {
+            message: "grok billing: missing creditUsagePercent".into(),
+            stale: None,
+        };
+    };
+    let end = config
+        .pointer("/currentPeriod/end")
+        .and_then(|x| x.as_str())
+        .or_else(|| config.get("billingPeriodEnd").and_then(|x| x.as_str()))
+        .and_then(ts);
+    let weekly =
+        QuotaWindow::from_used_percent(WindowLabel::Weekly, used_pct as f32, end, Some(10080));
+    let extra = match (
+        config.pointer("/onDemandCap/val").and_then(json_f64),
+        config.pointer("/onDemandUsed/val").and_then(json_f64),
+    ) {
+        (Some(cap), used) if cap > 0.0 => {
+            let used = used.unwrap_or(0.0);
+            Some(ExtraCredits {
+                label: "extra usage".into(),
+                remaining: (cap - used).max(0.0),
+                unit: CreditUnit::Credits,
+                limit: Some(cap),
+            })
+        }
+        _ => None,
+    };
+    ProviderStatus::Available {
+        plan: Some("SuperGrok".into()),
+        windows: vec![weekly],
+        extra,
+    }
+}
+
+impl Provider for GrokAdapter {
+    fn id(&self) -> &'static str {
+        "grok"
+    }
+    fn display_name(&self) -> &'static str {
+        "Grok"
+    }
+    fn glyph_ascii(&self) -> &'static str {
+        glyph_ascii("grok")
+    }
+    fn docs_url(&self) -> Option<&'static str> {
+        Some("https://grok.com")
+    }
+    fn refresh_policy(&self) -> RefreshPolicy {
+        RefreshPolicy::Default
+    }
+    fn fetch(&self) -> FetchFuture {
+        if self.token.is_none() && self.recorded.is_none() {
+            return Box::pin(async {
+                ProviderStatus::NotConfigured {
+                    hint: "grok login".into(),
+                }
+            });
+        }
+        if let Some(v) = self.recorded.clone() {
+            return Box::pin(async move { map_grok_billing(&v) });
+        }
+        let token = self.token.clone().unwrap();
+        Box::pin(async move {
+            match http_get_json(
+                GROK_BILLING_URL,
+                &[
+                    ("Authorization", format!("Bearer {token}")),
+                    ("X-XAI-Token-Auth", "xai-grok-cli".into()),
+                    ("Accept", "application/json".into()),
+                ],
+            )
+            .await
+            {
+                Ok(v) => map_grok_billing(&v),
+                Err(e) => ProviderStatus::Error {
+                    message: e,
+                    stale: None,
+                },
+            }
+        })
+    }
+}

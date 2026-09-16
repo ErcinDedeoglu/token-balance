@@ -1,10 +1,10 @@
 {
   "result": "passed",
-  "growth": "horizontal",
+  "growth": "mixed",
   "counts": {
-    "added": 2,
-    "modified": 0,
-    "deleted": 0,
+    "added": 34,
+    "modified": 9,
+    "deleted": 1,
     "moved": 0
   }
 }

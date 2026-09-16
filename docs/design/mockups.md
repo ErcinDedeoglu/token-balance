@@ -2,7 +2,7 @@
 
 **Not** column-accurate. **Not** the PR3 snapshot oracle. Oracle: `layout.rs` numeric constraints + TestBackend at the sizes below. PR3 must not “match the mockups” character-for-character.
 
-Card height in every mockup: **7 rows including borders**, including z.ai / Muse. Inner card width = terminal width − 2 padding, split with 1-col gaps (`Fill(1)` remainder left-to-right): 80-col → 78; 120-col → 59+58; 140-col → 46+45+45.
+Card height in every mockup: **7 rows including borders**, including z.ai / Muse. Inner card width = terminal width − 2 padding, split with 1-col gaps (`Fill(1)` remainder left-to-right): 80-col 2-col → 38+39; 120-col → 59+58; 140-col → 46+45+45.
 
 | Backend | What it proves |
 | --- | --- |
@@ -13,7 +13,7 @@ Card height in every mockup: **7 rows including borders**, including z.ai / Muse
 
 Claude hero is **72%** (session), weekly 41% secondary. z.ai / Muse are **7 rows** (status, one hint, dashed unknown bar, blank, footer). No `(no %)` row.
 
-## 80-col — 1 column (`< 90`)
+## 80-col — 2 columns (`80–139`)
 
 ```
  token-balance  14:32  worst Codex 18%   12s ago
