@@ -53,6 +53,12 @@ pub const INIT_TEMPLATE: &str = "\
 # id = \"muse-web\"
 # label = \"muse web\"
 # credentials = \".config/token-balance/muse-web.json\"
+#
+# [[account]]
+# vendor = \"fal\"
+# id = \"fal\"
+# label = \"fal\"
+# api_key_env = \"FAL_KEY\"
 ";
 
 const INLINE_KEYS: &[&str] = &[
@@ -77,6 +83,7 @@ pub enum Vendor {
     Deepseek,
     Muse,
     MuseWeb,
+    Fal,
 }
 
 impl Vendor {
@@ -91,6 +98,7 @@ impl Vendor {
             "deepseek" => Ok(Self::Deepseek),
             "muse" => Ok(Self::Muse),
             "muse-web" => Ok(Self::MuseWeb),
+            "fal" => Ok(Self::Fal),
             other => Err(format!("unknown vendor '{other}'")),
         }
     }
@@ -106,6 +114,7 @@ impl Vendor {
             Self::Deepseek => "deepseek",
             Self::Muse => "muse",
             Self::MuseWeb => "muse-web",
+            Self::Fal => "fal",
         }
     }
 }

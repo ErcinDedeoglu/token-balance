@@ -119,5 +119,6 @@ Default glyphs are **unique 1-column ASCII** so Claude and Codex cannot collide.
 | `zai` | `Z` | `Z` |
 | `muse` | `M` | `M` |
 | `muse-web` | `W` | `W` |
+| `fal` | `F` | `F` |
 
 v1 paints `glyph_ascii`. Unit test: every v1 id has a distinct `glyph_ascii`.

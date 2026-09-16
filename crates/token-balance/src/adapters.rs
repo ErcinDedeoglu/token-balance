@@ -2,6 +2,7 @@ mod claude;
 mod codex;
 mod codex_rpc;
 mod deepseek;
+mod fal;
 mod grok;
 mod kiro;
 mod kimi;
@@ -12,6 +13,7 @@ mod zai;
 pub use claude::ClaudeAdapter;
 pub use codex::CodexAdapter;
 pub use deepseek::DeepseekAdapter;
+pub use fal::FalAdapter;
 pub use grok::GrokAdapter;
 pub use kiro::KiroAdapter;
 pub use kimi::KimiAdapter;
@@ -89,6 +91,7 @@ fn adapter_from_row(creds: &Credentials, row: AccountRow) -> Arc<dyn Provider> {
         Vendor::Deepseek => Arc::new(DeepseekAdapter::from_account(creds, id, &row.pointer)),
         Vendor::Muse => Arc::new(MuseAdapter::from_account(creds, id, &row.pointer, true)),
         Vendor::MuseWeb => Arc::new(MuseWebAdapter::from_account(creds, id, &row.pointer)),
+        Vendor::Fal => Arc::new(FalAdapter::from_account(creds, id, &row.pointer)),
     }
 }
 
