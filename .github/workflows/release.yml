@@ -38,20 +38,24 @@ jobs:
           key: ${{ matrix.target }}
       - name: Build
         run: cargo build -p token-balance --release --locked --target ${{ matrix.target }}
-      - name: Pack
+      - name: Pack (unix)
+        if: ${{ !contains(matrix.target, 'windows') }}
         shell: bash
         run: |
           set -euo pipefail
-          out="target/pack"
-          mkdir -p "$out"
-          bin="target/${{ matrix.target }}/release"
-          if [[ "${{ matrix.target }}" == *windows* ]]; then
-            tar -C "$bin" -a -cf "$out/token-balance-${{ matrix.target }}.zip" \
-              token-balance.exe tb.exe
-          else
-            tar -C "$bin" -czf "$out/token-balance-${{ matrix.target }}.tar.gz" \
-              token-balance tb
-          fi
+          mkdir -p target/pack
+          tar -C "target/${{ matrix.target }}/release" -czf \
+            "target/pack/token-balance-${{ matrix.target }}.tar.gz" \
+            token-balance tb
+      - name: Pack (windows)
+        if: contains(matrix.target, 'windows')
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path target/pack | Out-Null
+          Compress-Archive -Path @(
+            "target/${{ matrix.target }}/release/token-balance.exe",
+            "target/${{ matrix.target }}/release/tb.exe"
+          ) -DestinationPath "target/pack/token-balance-${{ matrix.target }}.zip" -Force
       - uses: actions/upload-artifact@v4
         with:
           name: token-balance-${{ matrix.target }}
