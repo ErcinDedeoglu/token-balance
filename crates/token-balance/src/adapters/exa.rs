@@ -4,6 +4,7 @@ use crate::credentials::Credentials;
 use crate::domain::{CreditUnit, ExtraCredits, LedgerKind, ProviderStatus};
 use crate::providers::{AccountIdentity, FetchFuture, Provider, RefreshPolicy};
 use serde_json::Value;
+use std::process::Command;
 use std::time::Duration;
 
 pub const EXA_CREDITS_URL: &str = "https://dashboard.exa.ai/api/get-credits";
@@ -161,6 +162,51 @@ async fn get_credits(cookie: &str) -> Result<Value, String> {
     resp.json().await.map_err(|e| e.to_string())
 }
 
+fn chrome_mcp(args: &[&str]) -> Result<Value, String> {
+    let out = Command::new("chrome-mcp")
+        .args(args)
+        .output()
+        .map_err(|e| format!("chrome-mcp: {e}"))?;
+    if !out.status.success() {
+        let err = String::from_utf8_lossy(&out.stderr);
+        return Err(format!(
+            "chrome-mcp exit {}: {err}",
+            out.status.code().unwrap_or(-1)
+        ));
+    }
+    serde_json::from_slice(&out.stdout).map_err(|e| format!("chrome-mcp json: {e}"))
+}
+
+fn dashboard_tab_id() -> Result<u64, String> {
+    let tabs = chrome_mcp(&["tabs_list"])?;
+    let arr = tabs.as_array().ok_or("chrome-mcp tabs_list: not an array")?;
+    for t in arr {
+        let url = t.get("url").and_then(|u| u.as_str()).unwrap_or("");
+        if url.contains("dashboard.exa.ai") {
+            return t
+                .get("id")
+                .and_then(|id| id.as_u64())
+                .ok_or_else(|| "chrome-mcp tab missing id".into());
+        }
+    }
+    Err("open https://dashboard.exa.ai/billing in Chrome".into())
+}
+
+fn get_credits_chrome() -> Result<Value, String> {
+    let tab_id = dashboard_tab_id()?;
+    let args = format!(
+        r#"{{"url":"{EXA_CREDITS_URL}","method":"GET","responseType":"json","tabId":{tab_id}}}"#
+    );
+    let v = chrome_mcp(&["http_request", "--args", &args])?;
+    let status = v.get("status").and_then(|s| s.as_u64()).unwrap_or(0);
+    if status != 200 {
+        return Err(dashboard_http_error(status as u16));
+    }
+    v.get("data")
+        .cloned()
+        .ok_or_else(|| "chrome-mcp get-credits: no data".into())
+}
+
 impl Provider for ExaAdapter {
     fn id(&self) -> &str {
         &self.ident.id
@@ -179,6 +225,9 @@ impl Provider for ExaAdapter {
     }
     fn refresh_policy(&self) -> RefreshPolicy {
         RefreshPolicy::Interval(Duration::from_secs(180))
+    }
+    fn fetch_timeout(&self) -> Duration {
+        Duration::from_secs(30)
     }
     fn fetch(&self) -> FetchFuture {
         if self.recorded.is_none()
@@ -207,7 +256,12 @@ impl Provider for ExaAdapter {
         }
         let cookie = self.cookie.clone().unwrap();
         Box::pin(async move {
-            match get_credits(&cookie).await {
+            let chrome = tokio::task::spawn_blocking(get_credits_chrome).await;
+            let v = match chrome {
+                Ok(Ok(v)) => Ok(v),
+                Ok(Err(_)) | Err(_) => get_credits(&cookie).await,
+            };
+            match v {
                 Ok(v) => map_exa_json(&v),
                 Err(e) => ProviderStatus::Error {
                     message: e,
