@@ -1,7 +1,7 @@
 ---
 id: GOAL-DIST-1
 title: CI, GitHub releases, and cross-platform install
-status: in-progress
+status: done
 created: 2026-09-17
 source: discussion
 ---
@@ -74,48 +74,48 @@ n/a
 - [x] **T3** Add `tooling/install/install.sh` mapping Darwin/Linux uname to the four unix targets → AC-4
 - [x] **T4** Add `tooling/install/install.ps1` for Windows x64 and an ARM64 error that names `cargo install --git` → AC-4, AC-5
 - [x] **T5** Write README install commands for curl, PowerShell, and cargo-git → AC-3
-- [ ] **T6** Push git tag `v0.1.0` to `origin` after the workflow files are on `main` → AC-2
+- [x] **T6** Push git tag `v0.1.0` to `origin` after the workflow files are on `main` → AC-2
 
 ## Acceptance criteria
 
 ### Must
 
-- [ ] **AC-1** Given a push or pull request to `main`, when CI runs, then the `test` job executes `cargo test -p token-balance --locked` and `cargo build -p token-balance --locked` on `ubuntu-latest`, `macos-latest`, and `windows-latest`.
+- [x] **AC-1** Given a push or pull request to `main`, when CI runs, then the `test` job executes `cargo test -p token-balance --locked` and `cargo build -p token-balance --locked` on `ubuntu-latest`, `macos-latest`, and `windows-latest`.
       Verify: `rg -n "ubuntu-latest, macos-latest, windows-latest" .github/workflows/ci.yml` and `rg -n "cargo test -p token-balance --locked" .github/workflows/ci.yml`; after merge, the Actions run for that SHA is green
-- [ ] **AC-2** Given `main` contains the release workflow and git tag `v0.1.0` (matching workspace `version`), when the release workflow finishes, then a GitHub Release exists whose assets include `token-balance-x86_64-unknown-linux-gnu.tar.gz`, `token-balance-aarch64-unknown-linux-gnu.tar.gz`, `token-balance-x86_64-apple-darwin.tar.gz`, `token-balance-aarch64-apple-darwin.tar.gz`, `token-balance-x86_64-pc-windows-msvc.zip`, and `sha256sums.txt`, and each archive contains both `token-balance` and `tb` (`.exe` on Windows).
+- [x] **AC-2** Given `main` contains the release workflow and git tag `v0.1.0` (matching workspace `version`), when the release workflow finishes, then a GitHub Release exists whose assets include `token-balance-x86_64-unknown-linux-gnu.tar.gz`, `token-balance-aarch64-unknown-linux-gnu.tar.gz`, `token-balance-x86_64-apple-darwin.tar.gz`, `token-balance-aarch64-apple-darwin.tar.gz`, `token-balance-x86_64-pc-windows-msvc.zip`, and `sha256sums.txt`, and each archive contains both `token-balance` and `tb` (`.exe` on Windows).
       Verify: `rg -n "target:" .github/workflows/release.yml`; after tag push, `gh release view v0.1.0 --json assets --jq '.assets[].name'`
-- [ ] **AC-3** Given the repository README, when a reader opens the Install section, then it contains the exact `curl -fsSL` line for `tooling/install/install.sh`, the `irm` / `iex` line for `tooling/install/install.ps1`, and `cargo install --git https://github.com/ErcinDedeoglu/token-balance --locked`.
+- [x] **AC-3** Given the repository README, when a reader opens the Install section, then it contains the exact `curl -fsSL` line for `tooling/install/install.sh`, the `irm` / `iex` line for `tooling/install/install.ps1`, and `cargo install --git https://github.com/ErcinDedeoglu/token-balance --locked`.
       Verify: `rg -n "install.sh|install.ps1|cargo install --git" README.md`
-- [ ] **AC-4** Given a published latest release with those asset names, when `install.sh` runs on Darwin or Linux, then it downloads `token-balance-<mapped-target>.tar.gz` and writes executable `token-balance` and `tb` into `TOKEN_BALANCE_BIN_DIR` or `$HOME/.local/bin`; when `install.ps1` runs on Windows x64, then it writes `token-balance.exe` and `tb.exe` into `%LOCALAPPDATA%\token-balance\bin` unless `TOKEN_BALANCE_BIN_DIR` is set.
+- [x] **AC-4** Given a published latest release with those asset names, when `install.sh` runs on Darwin or Linux, then it downloads `token-balance-<mapped-target>.tar.gz` and writes executable `token-balance` and `tb` into `TOKEN_BALANCE_BIN_DIR` or `$HOME/.local/bin`; when `install.ps1` runs on Windows x64, then it writes `token-balance.exe` and `tb.exe` into `%LOCALAPPDATA%\token-balance\bin` unless `TOKEN_BALANCE_BIN_DIR` is set.
       Verify: `rg -n "aarch64-apple-darwin|x86_64-apple-darwin|x86_64-unknown-linux-gnu|aarch64-unknown-linux-gnu" tooling/install/install.sh`; `rg -n "x86_64-pc-windows-msvc" tooling/install/install.ps1`; after AC-2, run the matching installer and `tb --version`
-- [ ] **AC-5** Given Windows ARM64, when `install.ps1` runs, then it throws and the message contains `cargo install --git` and does not download the x64 zip.
+- [x] **AC-5** Given Windows ARM64, when `install.ps1` runs, then it throws and the message contains `cargo install --git` and does not download the x64 zip.
       Verify: `rg -n "Arm64" tooling/install/install.ps1` and `rg -n "cargo install --git" tooling/install/install.ps1`
-- [ ] **AC-6** Given a tag `v0.1.1` while `Cargo.toml` workspace `version` is `0.1.0`, when the release workflow runs, then the `Tag matches Cargo.toml` step exits non-zero and no GitHub Release is published for that tag.
+- [x] **AC-6** Given a tag `v0.1.1` while `Cargo.toml` workspace `version` is `0.1.0`, when the release workflow runs, then the `Tag matches Cargo.toml` step exits non-zero and no GitHub Release is published for that tag.
       Verify: `rg -n "Tag matches Cargo.toml" .github/workflows/release.yml`; `rg -n "tag-matches-version.sh" .github/workflows/release.yml`; `bash tooling/install/tag-matches-version.sh v0.1.1` exits non-zero while workspace version is 0.1.0
 
 ### Should
 
-- [ ] **AC-S1** Given a successful release, when assets are listed, then `sha256sums.txt` is present next to the five archives.
+- [x] **AC-S1** Given a successful release, when assets are listed, then `sha256sums.txt` is present next to the five archives.
       Verify: after AC-2, `gh release view v0.1.0 --json assets --jq '.assets[].name'` includes `sha256sums.txt`
 
 ## Definition of done
 
-- [ ] Every Must AC is `[x]` with evidence under Evidence
-- [ ] Work items that those AC require are `[x]`
-- [ ] Applicable gates pass: `cargo test -p token-balance --locked` / `n/a` lint / `n/a` typecheck; `.githooks/check-quality.sh`; `tooling/agent-kit/check.sh`
-- [ ] No secrets in the file or the change
-- [ ] Leftovers filed as a later `GOAL-DIST-N` or listed in Out
+- [x] Every Must AC is `[x]` with evidence under Evidence
+- [x] Work items that those AC require are `[x]`
+- [x] Applicable gates pass: `cargo test -p token-balance --locked` / `n/a` lint / `n/a` typecheck; `.githooks/check-quality.sh`; `tooling/agent-kit/check.sh`
+- [x] No secrets in the file or the change
+- [x] Leftovers filed as a later `GOAL-DIST-N` or listed in Out
 
 ## Evidence
 
 | AC | Result | Proof |
 | --- | --- | --- |
-| AC-1 | pending | `a3c9444` on `main`; CI run https://github.com/ErcinDedeoglu/token-balance/actions/runs/35189620257 in_progress |
-| AC-2 | pending | workflow on `main`; tag not pushed until CI green |
+| AC-1 | pass | https://github.com/ErcinDedeoglu/token-balance/actions/runs/35192938655 conclusion=success on `c76bd7a`; jobs test (ubuntu-latest), test (macos-latest), test (windows-latest) all success. Same commands in `.github/workflows/ci.yml`. |
+| AC-2 | pass | https://github.com/ErcinDedeoglu/token-balance/releases/tag/v0.1.0 assets: five archives + sha256sums.txt. Darwin tar contains `token-balance` and `tb`. Windows zip (Zip archive data) contains `token-balance.exe` and `tb.exe`. Run 35192945654 success. |
 | AC-3 | pass | `README.md` lines 13, 21, 27: curl install.sh, irm install.ps1, cargo install --git |
-| AC-4 | pending | mapping tests pass; live installer waits for release assets |
-| AC-5 | pass | `cargo test -p token-balance --locked -- install_target`: `windows_arm64_refuses_with_cargo_install_git` ok; install.ps1 Arm64 throw before Invoke-WebRequest |
-| AC-6 | pass | `bash tooling/install/tag-matches-version.sh v0.1.1` exit 1; `v0.1.0` exit 0; release.yml calls that script |
+| AC-4 | pass | `install.sh` into TOKEN_BALANCE_BIN_DIR wrote both binaries; `tb --version` printed `tb 0.1.0`. Mapping tests: `cargo test -p token-balance --locked -- install_target` 8 passed. |
+| AC-5 | pass | `windows_arm64_refuses_with_cargo_install_git` ok; `install.sh --print-target Windows Arm64` fails with `cargo install --git` and no `.zip`; install.ps1 Arm64 throw before Invoke-WebRequest |
+| AC-6 | pass | `bash tooling/install/tag-matches-version.sh v0.1.1` exit 1; `v0.1.0` exit 0; release.yml `Tag matches Cargo.toml` runs that script |
 
 ## Risks
 
