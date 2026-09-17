@@ -5,6 +5,7 @@ mod copilot;
 mod deepseek;
 mod exa;
 mod fal;
+mod firecrawl;
 mod grok;
 mod kiro;
 mod kimi;
@@ -18,6 +19,7 @@ pub use copilot::CopilotAdapter;
 pub use deepseek::DeepseekAdapter;
 pub use exa::ExaAdapter;
 pub use fal::FalAdapter;
+pub use firecrawl::FirecrawlAdapter;
 pub use grok::GrokAdapter;
 pub use kiro::KiroAdapter;
 pub use kimi::KimiAdapter;
@@ -98,6 +100,7 @@ fn adapter_from_row(creds: &Credentials, row: AccountRow) -> Arc<dyn Provider> {
         Vendor::Fal => Arc::new(FalAdapter::from_account(creds, id, &row.pointer)),
         Vendor::Copilot => Arc::new(CopilotAdapter::from_account(creds, id, &row.pointer)),
         Vendor::Exa => Arc::new(ExaAdapter::from_account(creds, id, &row.pointer)),
+        Vendor::Firecrawl => Arc::new(FirecrawlAdapter::from_account(creds, id, &row.pointer)),
     }
 }
 

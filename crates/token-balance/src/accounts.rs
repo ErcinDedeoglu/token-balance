@@ -77,6 +77,12 @@ pub const INIT_TEMPLATE: &str = "\
 # id = \"exa\"
 # label = \"exa\"
 # credentials = \".config/token-balance/exa.json\"
+#
+# [[account]]
+# vendor = \"firecrawl\"
+# id = \"firecrawl\"
+# label = \"firecrawl\"
+# api_key_env = \"FIRECRAWL_API_KEY\"
 ";
 
 const INLINE_KEYS: &[&str] = &[
@@ -104,6 +110,7 @@ pub enum Vendor {
     Fal,
     Copilot,
     Exa,
+    Firecrawl,
 }
 
 impl Vendor {
@@ -121,6 +128,7 @@ impl Vendor {
             "fal" => Ok(Self::Fal),
             "copilot" => Ok(Self::Copilot),
             "exa" => Ok(Self::Exa),
+            "firecrawl" => Ok(Self::Firecrawl),
             other => Err(format!("unknown vendor '{other}'")),
         }
     }
@@ -139,6 +147,7 @@ impl Vendor {
             Self::Fal => "fal",
             Self::Copilot => "copilot",
             Self::Exa => "exa",
+            Self::Firecrawl => "firecrawl",
         }
     }
 }

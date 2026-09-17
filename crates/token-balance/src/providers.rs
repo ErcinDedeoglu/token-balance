@@ -100,6 +100,7 @@ pub const GLYPHS: &[(&str, &str)] = &[
     ("fal", "F"),
     ("copilot", "C"),
     ("exa", "E"),
+    ("firecrawl", "N"),
 ];
 
 pub fn glyph_ascii(id: &str) -> &'static str {
@@ -122,7 +123,7 @@ mod tests {
             assert_eq!(g.chars().count(), 1, "{id} glyph must be 1 column");
             assert!(seen.insert(*g), "duplicate glyph {g}");
         }
-        assert_eq!(GLYPHS.len(), 12);
+        assert_eq!(GLYPHS.len(), 13);
     }
 
     #[test]

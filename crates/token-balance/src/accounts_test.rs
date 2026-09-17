@@ -185,7 +185,7 @@ fn init_template_uncommented_parses_to_rows() {
         .collect::<Vec<_>>()
         .join("\n");
     let rows = parse_accounts(&uncommented).unwrap_or_else(|e| panic!("{e}\n{uncommented}"));
-    assert_eq!(rows.len(), 11, "{uncommented}");
+    assert_eq!(rows.len(), 12, "{uncommented}");
     assert_eq!(rows[0].vendor, Vendor::Claude);
     assert_eq!(rows[0].id, "claude-work");
     assert_eq!(rows[1].vendor, Vendor::Claude);
@@ -203,6 +203,8 @@ fn init_template_uncommented_parses_to_rows() {
     assert_eq!(rows[9].id, "copilot");
     assert_eq!(rows[10].vendor, Vendor::Exa);
     assert_eq!(rows[10].id, "exa");
+    assert_eq!(rows[11].vendor, Vendor::Firecrawl);
+    assert_eq!(rows[11].id, "firecrawl");
 }
 
 #[test]
