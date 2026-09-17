@@ -1,0 +1,2 @@
+# dash (/bin/sh on Debian, Git usr/bin/dash.exe on Windows) rejects CR in `set -eu`.
+*.sh text eol=lf

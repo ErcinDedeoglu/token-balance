@@ -57,6 +57,7 @@ First match wins. Unclassified staged files fail `[unclassified-path]`.
 | LICENSE-APACHE | doc |
 | .gitignore | config |
 | .qualityignore | config |
+| .gitattributes | config |
 | .githooks/** | source |
 | tooling/** | source |
 | .opencode/** | source |
@@ -80,6 +81,7 @@ Staged files at repository root not in this list fail `[no-loose-files]`. Adding
 | LICENSE-APACHE |
 | .gitignore |
 | .qualityignore |
+| .gitattributes |
 
 Dot-directories (`.githooks/`, `.github/`, `.opencode/`, `.git/`) are folders, not loose files.
 
