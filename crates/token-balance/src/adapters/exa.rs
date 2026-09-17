@@ -6,9 +6,6 @@ use crate::providers::{AccountIdentity, FetchFuture, Provider, RefreshPolicy};
 use serde_json::Value;
 use std::time::Duration;
 
-#[path = "exa_chrome.rs"]
-mod chrome;
-
 pub const EXA_CREDITS_URL: &str = "https://dashboard.exa.ai/api/get-credits";
 const CHROME_UA: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36";
 
@@ -183,9 +180,6 @@ impl Provider for ExaAdapter {
     fn refresh_policy(&self) -> RefreshPolicy {
         RefreshPolicy::Interval(Duration::from_secs(180))
     }
-    fn fetch_timeout(&self) -> Duration {
-        Duration::from_secs(18)
-    }
     fn fetch(&self) -> FetchFuture {
         if self.recorded.is_none()
             && self.cookie.is_none()
@@ -213,14 +207,11 @@ impl Provider for ExaAdapter {
         }
         let cookie = self.cookie.clone().unwrap();
         Box::pin(async move {
-            match chrome::get_credits_chrome().await {
+            match get_credits(&cookie).await {
                 Ok(v) => map_exa_json(&v),
-                Err(ce) => match get_credits(&cookie).await {
-                    Ok(v) => map_exa_json(&v),
-                    Err(he) => ProviderStatus::Error {
-                        message: format!("{he} ({ce})"),
-                        stale: None,
-                    },
+                Err(e) => ProviderStatus::Error {
+                    message: e,
+                    stale: None,
                 },
             }
         })

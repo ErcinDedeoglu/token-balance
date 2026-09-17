@@ -12,4 +12,5 @@ Bins `token-balance` and `tb` share `src/main.rs`. Ledger-1 remaining-quota boar
 - Never call Moonshot PAYG balance, Anthropic Admin Usage, or xAI prepaid on plan cards
 - Never call Exa Team Management `/usage` (`total_cost_usd`) as remaining
 - Never commit `exa.json` dashboard cookies
+- Never open Chrome or call chrome-mcp from adapters
 - Never poll Firecrawl `/scrape` for remaining; use `/v2/team/credit-usage` only
