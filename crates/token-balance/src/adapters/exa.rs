@@ -184,7 +184,7 @@ impl Provider for ExaAdapter {
         RefreshPolicy::Interval(Duration::from_secs(180))
     }
     fn fetch_timeout(&self) -> Duration {
-        Duration::from_secs(30)
+        Duration::from_secs(18)
     }
     fn fetch(&self) -> FetchFuture {
         if self.recorded.is_none()
@@ -213,19 +213,14 @@ impl Provider for ExaAdapter {
         }
         let cookie = self.cookie.clone().unwrap();
         Box::pin(async move {
-            let chrome = tokio::task::spawn_blocking(chrome::get_credits_chrome).await;
-            match chrome {
-                Ok(Ok(v)) => map_exa_json(&v),
-                Ok(Err(ce)) => match get_credits(&cookie).await {
+            match chrome::get_credits_chrome().await {
+                Ok(v) => map_exa_json(&v),
+                Err(ce) => match get_credits(&cookie).await {
                     Ok(v) => map_exa_json(&v),
                     Err(he) => ProviderStatus::Error {
                         message: format!("{he} ({ce})"),
                         stale: None,
                     },
-                },
-                Err(j) => ProviderStatus::Error {
-                    message: format!("exa: chrome-mcp join: {j}"),
-                    stale: None,
                 },
             }
         })

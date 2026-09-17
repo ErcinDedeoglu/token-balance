@@ -1,6 +1,6 @@
 use super::{EXA_CREDITS_URL, dashboard_http_error};
 use serde_json::Value;
-use std::process::Command;
+use std::time::Duration;
 
 fn chrome_mcp_bin() -> std::path::PathBuf {
     if let Ok(home) = std::env::var("HOME") {
@@ -12,10 +12,12 @@ fn chrome_mcp_bin() -> std::path::PathBuf {
     std::path::PathBuf::from("chrome-mcp")
 }
 
-fn chrome_mcp(args: &[&str]) -> Result<Value, String> {
-    let out = Command::new(chrome_mcp_bin())
-        .args(args)
-        .output()
+async fn chrome_mcp(args: &[&str]) -> Result<Value, String> {
+    let mut cmd = tokio::process::Command::new(chrome_mcp_bin());
+    cmd.arg("--timeout").arg("12").args(args).kill_on_drop(true);
+    let out = tokio::time::timeout(Duration::from_secs(14), cmd.output())
+        .await
+        .map_err(|_| "chrome-mcp timed out".to_string())?
         .map_err(|e| format!("chrome-mcp: {e}"))?;
     if !out.status.success() {
         let err = String::from_utf8_lossy(&out.stderr);
@@ -38,8 +40,8 @@ fn json_tab_id(v: &Value) -> Option<u64> {
         })
 }
 
-fn dashboard_tab_id() -> Result<u64, String> {
-    let tabs = chrome_mcp(&["tabs_list"])?;
+async fn dashboard_tab_id() -> Result<u64, String> {
+    let tabs = chrome_mcp(&["tabs_list"]).await?;
     let arr = tabs.as_array().ok_or("chrome-mcp tabs_list: not an array")?;
     for t in arr {
         let url = t.get("url").and_then(|u| u.as_str()).unwrap_or("");
@@ -49,22 +51,19 @@ fn dashboard_tab_id() -> Result<u64, String> {
     }
     let created = chrome_mcp(&[
         "tabs_create",
-        "--url",
-        "https://dashboard.exa.ai/billing",
-        "--active",
-        "false",
-        "--timeout",
-        "25000",
-    ])?;
+        "--args",
+        r#"{"url":"https://dashboard.exa.ai/billing","active":false,"timeout":12000}"#,
+    ])
+    .await?;
     json_tab_id(&created).ok_or_else(|| "chrome-mcp tabs_create: no tab id".into())
 }
 
-pub fn get_credits_chrome() -> Result<Value, String> {
-    let tab_id = dashboard_tab_id()?;
+pub async fn get_credits_chrome() -> Result<Value, String> {
+    let tab_id = dashboard_tab_id().await?;
     let args = format!(
         r#"{{"url":"{EXA_CREDITS_URL}","method":"GET","responseType":"json","tabId":{tab_id}}}"#
     );
-    let v = chrome_mcp(&["http_request", "--args", &args])?;
+    let v = chrome_mcp(&["http_request", "--args", &args]).await?;
     let status = v.get("status").and_then(|s| s.as_u64()).unwrap_or(0);
     if status != 200 {
         return Err(dashboard_http_error(status as u16));
