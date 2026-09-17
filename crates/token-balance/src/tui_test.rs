@@ -3,6 +3,7 @@ use crate::adapters::live_registry;
 use crate::credentials::Credentials;
 use crate::domain::{Clock, ProviderStatus};
 use crate::fixtures::{FixtureSet, fixture_registry, frozen_demo_clock};
+use crate::providers::RefreshTrigger;
 use crate::overlay::Overlay;
 use crossterm::event::{KeyCode, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::Terminal;
@@ -421,4 +422,27 @@ fn regex_pager(foot: &str) -> bool {
         }
     }
     false
+}
+
+#[tokio::test]
+async fn timer_retries_error_only_after_backoff() {
+    let clock: Arc<dyn Clock> = Arc::new(frozen_demo_clock());
+    let providers = fixture_registry(FixtureSet::Mixed, Arc::clone(&clock));
+    let (app, mut rx) = App::new(providers, clock, None);
+    let mut app = app.bootstrap(&mut rx).await;
+    app.on_fetch_result(
+        "codex".into(),
+        ProviderStatus::Error {
+            message: "timed out".into(),
+            stale: None,
+        },
+    );
+    app.start_refresh(RefreshTrigger::Timer);
+    assert_eq!(app.in_flight, 0, "frozen clock must not retry before backoff");
+    app.retry_at
+        .insert("codex".into(), app.clock.now());
+    app.start_refresh(RefreshTrigger::Timer);
+    assert!(app.in_flight > 0, "due retry must spawn");
+    app.drain_fetches(&mut rx).await;
+    assert_eq!(app.in_flight, 0);
 }

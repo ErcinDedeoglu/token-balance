@@ -97,3 +97,27 @@ fn muse_web_missing_quota_is_error() {
         other => panic!("{other:?}"),
     }
 }
+
+#[test]
+fn muse_web_interval_is_three_minutes() {
+    let home = std::env::temp_dir().join(format!(
+        "tb-muse-web-pol-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    std::fs::create_dir_all(&home).unwrap();
+    let creds = crate::credentials::Credentials::isolated(home, std::collections::BTreeMap::new());
+    let ident = AccountIdentity::vendor_default("muse-web", "muse web");
+    let adapter = MuseWebAdapter::from_account(
+        &creds,
+        ident,
+        &crate::accounts::Pointer::File(".config/token-balance/muse-web.json".into()),
+    );
+    match adapter.refresh_policy() {
+        crate::providers::RefreshPolicy::Interval(d) => assert_eq!(d.as_secs(), 180),
+        other => panic!("{other:?}"),
+    }
+}

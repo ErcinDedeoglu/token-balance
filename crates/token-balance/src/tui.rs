@@ -7,9 +7,11 @@ use crate::domain::{
 use crate::fixtures::{FixtureSet, mixed_available_snapshots};
 use crate::layout::{GridMove, card_row, clamp_scroll, columns, move_index, visible_card_rows};
 use crate::overlay::Overlay;
-use crate::providers::{Provider, RefreshTrigger, allows_refresh};
+use crate::providers::{
+    Provider, RefreshTrigger, allows_refresh, error_backoff, refresh_period,
+};
 use crate::theme::Theme;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use chrono::{DateTime, Utc};
 use crossterm::event::{KeyCode, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::Frame;
@@ -33,6 +35,9 @@ pub struct App {
     last_refresh: Option<DateTime<Utc>>,
     fetch_tx: UnboundedSender<(String, ProviderStatus)>,
     in_flight: u32,
+    in_flight_ids: HashSet<String>,
+    last_attempt: HashMap<String, DateTime<Utc>>,
+    retry_at: HashMap<String, DateTime<Utc>>,
     theme: Theme,
 }
 
@@ -65,6 +70,9 @@ impl App {
             last_refresh: None,
             fetch_tx,
             in_flight: 0,
+            in_flight_ids: HashSet::new(),
+            last_attempt: HashMap::new(),
+            retry_at: HashMap::new(),
             theme: Theme::select(),
         };
         (app, fetch_rx)
@@ -100,23 +108,66 @@ impl App {
         self
     }
 
+    pub fn on_tick(&mut self) {
+        self.start_refresh(RefreshTrigger::Timer);
+    }
+
     pub fn start_refresh(&mut self, trigger: RefreshTrigger) {
-        if self.fetching {
-            if trigger == RefreshTrigger::Manual {
-                self.refresh_queued = true;
-            }
+        if trigger == RefreshTrigger::Manual && self.fetching {
+            self.refresh_queued = true;
+            return;
+        }
+        let ids = self.ids_to_fetch(trigger);
+        self.spawn_ids(&ids);
+    }
+
+    fn ids_to_fetch(&self, trigger: RefreshTrigger) -> Vec<String> {
+        let now = self.clock.now();
+        self.providers
+            .iter()
+            .filter_map(|p| {
+                let id = p.id();
+                if self.in_flight_ids.contains(id) {
+                    return None;
+                }
+                if !allows_refresh(p.refresh_policy(), trigger) {
+                    return None;
+                }
+                if trigger == RefreshTrigger::Manual {
+                    return Some(id.to_string());
+                }
+                if let Some(at) = self.retry_at.get(id) {
+                    return (now >= *at).then(|| id.to_string());
+                }
+                let period = refresh_period(p.refresh_policy())?;
+                match self.last_attempt.get(id) {
+                    None => Some(id.to_string()),
+                    Some(t) => {
+                        let elapsed = now.signed_duration_since(*t).to_std().unwrap_or_default();
+                        (elapsed >= period).then(|| id.to_string())
+                    }
+                }
+            })
+            .collect()
+    }
+
+    fn spawn_ids(&mut self, ids: &[String]) {
+        if ids.is_empty() {
             return;
         }
         let now = self.clock.now();
-        let mut spawned = 0u32;
-        for p in &self.providers {
-            if !allows_refresh(p.refresh_policy(), trigger) {
+        for id in ids {
+            let Some(p) = self.providers.iter().find(|p| p.id() == *id) else {
+                continue;
+            };
+            if !self.in_flight_ids.insert(id.clone()) {
                 continue;
             }
+            self.last_attempt.insert(id.clone(), now);
             let p = Arc::clone(p);
-            let id = p.id().to_string();
             let timeout = p.fetch_timeout();
             let tx = self.fetch_tx.clone();
+            let spawn_id = id.clone();
             tokio::spawn(async move {
                 let work = async move {
                     match tokio::time::timeout(timeout, p.fetch()).await {
@@ -138,16 +189,11 @@ impl App {
                         stale: None,
                     },
                 };
-                let _ = tx.send((id, status));
+                let _ = tx.send((spawn_id, status));
             });
-            spawned += 1;
+            self.in_flight += 1;
         }
-        if spawned == 0 {
-            self.fetching = false;
-            return;
-        }
-        self.in_flight = spawned;
-        self.fetching = true;
+        self.fetching = self.in_flight > 0;
         self.last_refresh = Some(now);
     }
 
@@ -161,6 +207,19 @@ impl App {
     }
 
     pub fn on_fetch_result(&mut self, id: String, status: ProviderStatus) {
+        self.in_flight_ids.remove(&id);
+        match &status {
+            ProviderStatus::Error { message, .. } => {
+                let wait = error_backoff(message);
+                let delta = chrono::Duration::from_std(wait)
+                    .unwrap_or(chrono::Duration::seconds(30));
+                self.retry_at
+                    .insert(id.clone(), self.clock.now() + delta);
+            }
+            _ => {
+                self.retry_at.remove(&id);
+            }
+        }
         self.apply_one(&id, status);
         self.in_flight = self.in_flight.saturating_sub(1);
         if self.in_flight == 0 {

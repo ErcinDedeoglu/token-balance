@@ -27,17 +27,17 @@
     {
       "path": "crates/token-balance/src/tui.rs",
       "class": "source",
-      "sha256": "07f10555b40005ab2fd3a5aca3391d562ba1f42c9a1f3c245183417082969414",
+      "sha256": "6f1678d796459e57317bb60ddb9a8b48e986367218ef6206682a28c8a8b25045",
       "concern": "board App event loop and selection",
-      "rationale": "App owns snapshots, selection, overlay, refresh queue, and input. Keys, mouse, and r-reload all mutate the same selected_id and provider list; extracting one handler would split that state.",
+      "rationale": "App owns snapshots, selection, overlay, refresh queue, error backoff, and input. Keys, mouse, timer retry, and r-reload all mutate the same selected_id and in-flight set; extracting one handler would split that state.",
       "kind": "keep-cohesive"
     },
     {
       "path": "crates/token-balance/src/tui_test.rs",
       "class": "test",
-      "sha256": "e574c7fb8c7218bbac6be142f420a7a5c84915640eeaefd32ff14ee28000c007",
+      "sha256": "145d843404d48cdd29fef63745fe134186980c0ed3a079cb2c13eab4df9fac7b",
       "concern": "board App interaction tests",
-      "rationale": "These tests drive one App through keys, mouse, overlays, and live-config reload. Splitting would duplicate mixed_app bootstrap and hide selection regressions.",
+      "rationale": "These tests drive one App through keys, mouse, overlays, live-config reload, and error backoff retry. Splitting would duplicate mixed_app bootstrap and hide selection regressions.",
       "kind": "keep-cohesive"
     },
     {

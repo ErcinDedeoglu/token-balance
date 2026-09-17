@@ -10,3 +10,4 @@ build/
 *.local.md
 .claude/settings.local.json
 .claude/agent-memory-local/
+.opencode/opencode-loop/

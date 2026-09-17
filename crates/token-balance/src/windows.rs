@@ -155,9 +155,25 @@ pub fn format_age(now: DateTime<Utc>, fetched_at: DateTime<Utc>) -> String {
 }
 
 pub fn extra_line(extra: &ExtraCredits) -> String {
-    match extra.unit {
-        CreditUnit::Usd => format!("extra  ${:.2}", extra.remaining),
-        CreditUnit::Credits => format!("extra  {} cr", extra.remaining as i64),
-        CreditUnit::Unknown => format!("extra  {}", extra.remaining),
+    let used = extra.limit.map(|l| (l - extra.remaining).max(0.0));
+    match (extra.unit, extra.limit, used) {
+        (CreditUnit::Credits, Some(limit), Some(used)) => {
+            format!(
+                "{} left  {}/{} used",
+                extra.remaining as i64, used as i64, limit as i64
+            )
+        }
+        (CreditUnit::Usd, Some(limit), Some(used)) => {
+            format!(
+                "${:.2} left  ${:.2}/${:.2} used",
+                extra.remaining, used, limit
+            )
+        }
+        (CreditUnit::Unknown, Some(limit), Some(used)) => {
+            format!("{} left  {}/{}", extra.remaining, used, limit)
+        }
+        (CreditUnit::Usd, _, _) => format!("extra  ${:.2}", extra.remaining),
+        (CreditUnit::Credits, _, _) => format!("extra  {} cr", extra.remaining as i64),
+        (CreditUnit::Unknown, _, _) => format!("extra  {}", extra.remaining),
     }
 }

@@ -12,18 +12,32 @@ pub const CLAUDE_BETA: &str = "oauth-2025-04-20";
 pub struct ClaudeAdapter {
     ident: AccountIdentity,
     token: Option<String>,
+    unofficial_url: Option<String>,
     recorded: Option<Value>,
+}
+
+fn unofficial_url(pointer: &Pointer) -> Option<String> {
+    match pointer {
+        Pointer::File(p) if p.starts_with("http://") || p.starts_with("https://") => Some(p.clone()),
+        _ => None,
+    }
 }
 
 impl ClaudeAdapter {
     pub fn from_account(c: &Credentials, ident: AccountIdentity, pointer: &Pointer) -> Self {
-        let token = match pointer {
-            Pointer::Env(_) => pointer_secret(c, pointer, &["accessToken", "access_token"]),
-            Pointer::File(p) => c.read_to_string(p).and_then(|t| claude_token(&t)),
+        let unofficial_url = unofficial_url(pointer);
+        let token = if unofficial_url.is_some() {
+            None
+        } else {
+            match pointer {
+                Pointer::Env(_) => pointer_secret(c, pointer, &["accessToken", "access_token"]),
+                Pointer::File(p) => c.read_to_string(p).and_then(|t| claude_token(&t)),
+            }
         };
         Self {
             ident,
             token,
+            unofficial_url,
             recorded: None,
         }
     }
@@ -42,6 +56,7 @@ impl ClaudeAdapter {
         Self {
             ident: AccountIdentity::vendor_default("claude", "Claude"),
             token: Some("redacted".into()),
+            unofficial_url: None,
             recorded: Some(json),
         }
     }
@@ -71,7 +86,42 @@ fn bucket(v: &Value, label: WindowLabel, mins: u32) -> Option<QuotaWindow> {
     ))
 }
 
+fn extra_credits(v: &Value) -> Option<ExtraCredits> {
+    let x = v.get("extra_usage")?;
+    if x.get("is_enabled").and_then(|e| e.as_bool()) != Some(true) {
+        return None;
+    }
+    let limit = json_f64(&x["monthly_limit"]);
+    let used = json_f64(&x["used_credits"]).unwrap_or(0.0);
+    let remaining = limit.map(|l| (l - used).max(0.0)).unwrap_or(0.0);
+    Some(ExtraCredits {
+        label: "extra usage".into(),
+        remaining,
+        unit: CreditUnit::Usd,
+        limit,
+    })
+}
+
+fn extra_monthly(v: &Value) -> Option<QuotaWindow> {
+    let x = v.get("extra_usage")?;
+    if x.get("is_enabled").and_then(|e| e.as_bool()) != Some(true) {
+        return None;
+    }
+    let limit = json_f64(&x["monthly_limit"])?;
+    if limit <= 0.0 {
+        return None;
+    }
+    let used = json_f64(&x["used_credits"]).unwrap_or(0.0);
+    Some(QuotaWindow::from_used_percent(
+        WindowLabel::Other("mo".into()),
+        ((used / limit) * 100.0) as f32,
+        None,
+        None,
+    ))
+}
+
 pub fn map_claude_usage(v: &Value) -> ProviderStatus {
+    let v = v.get("usage").unwrap_or(v);
     let mut windows = Vec::new();
     if let Some(fh) = v.get("five_hour") {
         if let Some(w) = bucket(fh, WindowLabel::FiveHour, 300) {
@@ -83,30 +133,19 @@ pub fn map_claude_usage(v: &Value) -> ProviderStatus {
             windows.push(w);
         }
     }
+    let extra_only = windows.is_empty();
+    if extra_only {
+        if let Some(w) = extra_monthly(v) {
+            windows.push(w);
+        }
+    }
     if windows.is_empty() {
         return ProviderStatus::Error {
             message: "claude oauth/usage: no windows".into(),
             stale: None,
         };
     }
-    let extra = v.get("extra_usage").and_then(|x| {
-        let enabled = x
-            .get("is_enabled")
-            .and_then(|e| e.as_bool())
-            .unwrap_or(false);
-        if !enabled {
-            return None;
-        }
-        let limit = json_f64(&x["monthly_limit"]);
-        let used = json_f64(&x["used_credits"]).unwrap_or(0.0);
-        let remaining = limit.map(|l| (l - used).max(0.0)).unwrap_or(0.0);
-        Some(ExtraCredits {
-            label: "extra usage".into(),
-            remaining,
-            unit: CreditUnit::Usd,
-            limit,
-        })
-    });
+    let extra = extra_credits(v);
     ProviderStatus::Available {
         plan: None,
         windows,
@@ -131,15 +170,26 @@ impl Provider for ClaudeAdapter {
         RefreshPolicy::Default
     }
     fn fetch(&self) -> FetchFuture {
-        if self.token.is_none() && self.recorded.is_none() {
+        if let Some(v) = self.recorded.clone() {
+            return Box::pin(async move { map_claude_usage(&v) });
+        }
+        if let Some(url) = self.unofficial_url.clone() {
+            return Box::pin(async move {
+                match http_get_json(&url, &[]).await {
+                    Ok(v) => map_claude_usage(&v),
+                    Err(e) => ProviderStatus::Error {
+                        message: e,
+                        stale: None,
+                    },
+                }
+            });
+        }
+        if self.token.is_none() {
             return Box::pin(async {
                 ProviderStatus::NotConfigured {
                     hint: "run claude".into(),
                 }
             });
-        }
-        if let Some(v) = self.recorded.clone() {
-            return Box::pin(async move { map_claude_usage(&v) });
         }
         let token = self.token.clone().unwrap();
         Box::pin(async move {
@@ -161,3 +211,7 @@ impl Provider for ClaudeAdapter {
         })
     }
 }
+
+#[cfg(test)]
+#[path = "claude_test.rs"]
+mod tests;

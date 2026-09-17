@@ -71,7 +71,7 @@ pub enum SortMode {
     Name,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum CreditUnit {
     Usd,
     Credits,

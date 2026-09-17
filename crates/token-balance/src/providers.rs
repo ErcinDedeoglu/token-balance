@@ -9,7 +9,6 @@ pub type FetchFuture = Pin<Box<dyn Future<Output = ProviderStatus> + Send + 'sta
 pub enum RefreshPolicy {
     Default,
     OnDemand,
-    #[allow(dead_code)]
     Interval(Duration),
 }
 
@@ -26,6 +25,25 @@ pub fn allows_refresh(policy: RefreshPolicy, trigger: RefreshTrigger) -> bool {
         (RefreshPolicy::Default, _) => true,
         (RefreshPolicy::Interval(_), RefreshTrigger::Manual) => true,
         (RefreshPolicy::Interval(_), RefreshTrigger::Timer) => true,
+    }
+}
+
+pub fn refresh_period(policy: RefreshPolicy) -> Option<Duration> {
+    match policy {
+        RefreshPolicy::Default => Some(Duration::from_secs(60)),
+        RefreshPolicy::Interval(d) => Some(d),
+        RefreshPolicy::OnDemand => None,
+    }
+}
+
+pub fn error_backoff(message: &str) -> Duration {
+    let m = message.to_ascii_lowercase();
+    if m.contains("rate limit") {
+        Duration::from_secs(180)
+    } else if m.contains("timed out") {
+        Duration::from_secs(15)
+    } else {
+        Duration::from_secs(30)
     }
 }
 
@@ -124,5 +142,24 @@ mod tests {
             RefreshPolicy::Interval(Duration::from_secs(30)),
             RefreshTrigger::Timer
         ));
+    }
+
+    #[test]
+    fn error_backoff_rate_limit_is_longer_than_timeout() {
+        assert_eq!(
+            error_backoff("muse-web: Rate limit exceeded"),
+            Duration::from_secs(180)
+        );
+        assert_eq!(error_backoff("timed out"), Duration::from_secs(15));
+        assert_eq!(error_backoff("HTTP 502"), Duration::from_secs(30));
+        assert_eq!(
+            refresh_period(RefreshPolicy::Default),
+            Some(Duration::from_secs(60))
+        );
+        assert_eq!(
+            refresh_period(RefreshPolicy::Interval(Duration::from_secs(180))),
+            Some(Duration::from_secs(180))
+        );
+        assert_eq!(refresh_period(RefreshPolicy::OnDemand), None);
     }
 }

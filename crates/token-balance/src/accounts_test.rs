@@ -185,20 +185,22 @@ fn init_template_uncommented_parses_to_rows() {
         .collect::<Vec<_>>()
         .join("\n");
     let rows = parse_accounts(&uncommented).unwrap_or_else(|e| panic!("{e}\n{uncommented}"));
-    assert_eq!(rows.len(), 9, "{uncommented}");
+    assert_eq!(rows.len(), 10, "{uncommented}");
     assert_eq!(rows[0].vendor, Vendor::Claude);
     assert_eq!(rows[0].id, "claude-work");
-    assert_eq!(rows[1].vendor, Vendor::Kimi);
-    assert_eq!(rows[2].vendor, Vendor::Codex);
-    assert_eq!(rows[3].vendor, Vendor::Grok);
-    assert_eq!(rows[4].vendor, Vendor::Kiro);
-    assert_eq!(rows[5].vendor, Vendor::Deepseek);
-    assert_eq!(rows[6].vendor, Vendor::MuseWeb);
-    assert_eq!(rows[6].id, "muse-web");
-    assert_eq!(rows[7].vendor, Vendor::Fal);
-    assert_eq!(rows[7].id, "fal");
-    assert_eq!(rows[8].vendor, Vendor::Copilot);
-    assert_eq!(rows[8].id, "copilot");
+    assert_eq!(rows[1].vendor, Vendor::Claude);
+    assert_eq!(rows[1].id, "claude-cc");
+    assert_eq!(rows[2].vendor, Vendor::Kimi);
+    assert_eq!(rows[3].vendor, Vendor::Codex);
+    assert_eq!(rows[4].vendor, Vendor::Grok);
+    assert_eq!(rows[5].vendor, Vendor::Kiro);
+    assert_eq!(rows[6].vendor, Vendor::Deepseek);
+    assert_eq!(rows[7].vendor, Vendor::MuseWeb);
+    assert_eq!(rows[7].id, "muse-web");
+    assert_eq!(rows[8].vendor, Vendor::Fal);
+    assert_eq!(rows[8].id, "fal");
+    assert_eq!(rows[9].vendor, Vendor::Copilot);
+    assert_eq!(rows[9].id, "copilot");
 }
 
 #[test]

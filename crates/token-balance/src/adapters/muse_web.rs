@@ -3,6 +3,7 @@ use crate::adapters::json_f64;
 use crate::credentials::Credentials;
 use crate::domain::{ProviderStatus, QuotaWindow, WindowLabel};
 use crate::providers::{AccountIdentity, FetchFuture, Provider, RefreshPolicy};
+use std::time::Duration;
 use chrono::{TimeZone, Utc};
 use serde_json::{Value, json};
 
@@ -194,7 +195,17 @@ async fn fetch_graphql(s: &WebSession) -> Result<Value, String> {
         return Err(format!("HTTP {status}"));
     }
     if v.get("errors").is_some() && v.pointer("/data/team/subscription_quota_usage").is_none() {
-        return Err("muse-web GraphQL error".into());
+        let msg = v
+            .get("errors")
+            .and_then(|e| e.as_array())
+            .and_then(|a| a.first())
+            .and_then(|e| e.get("message"))
+            .and_then(|m| m.as_str())
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .unwrap_or("GraphQL error");
+        let msg: String = msg.chars().take(80).collect();
+        return Err(format!("muse-web: {msg}"));
     }
     Ok(v)
 }
@@ -227,7 +238,7 @@ impl Provider for MuseWebAdapter {
         Some("https://dev.meta.ai/usage/")
     }
     fn refresh_policy(&self) -> RefreshPolicy {
-        RefreshPolicy::Default
+        RefreshPolicy::Interval(Duration::from_secs(180))
     }
     fn fetch(&self) -> FetchFuture {
         if let Some(v) = self.recorded.clone() {

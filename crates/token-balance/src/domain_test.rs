@@ -201,3 +201,14 @@ fn display_pct_rounds_for_color() {
     assert_eq!(display_pct(19.4), 19);
     assert_eq!(display_pct(19.5), 20);
 }
+
+#[test]
+fn extra_line_shows_remaining_and_used_when_limit_present() {
+    let extra = ExtraCredits {
+        label: "extra usage".into(),
+        remaining: 536.34,
+        unit: CreditUnit::Usd,
+        limit: Some(1500.0),
+    };
+    assert_eq!(extra_line(&extra), "$536.34 left  $963.66/$1500.00 used");
+}

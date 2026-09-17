@@ -19,6 +19,12 @@ pub const INIT_TEMPLATE: &str = "\
 # credentials = \".claude/.credentials.json\"
 #
 # [[account]]
+# vendor = \"claude\"
+# id = \"claude-cc\"
+# label = \"claude cc\"
+# credentials = \"http://127.0.0.1:9090/cc/usage.json\"
+#
+# [[account]]
 # vendor = \"kimi\"
 # id = \"kimi-team\"
 # label = \"kimi team\"

@@ -1,5 +1,4 @@
 use crate::domain::ProviderStatus;
-use crate::providers::RefreshTrigger;
 use crate::tui::App;
 use crossterm::event::{DisableMouseCapture, EnableMouseCapture, Event, KeyEventKind};
 use crossterm::execute;
@@ -53,8 +52,6 @@ pub async fn run_crossterm(
         }
     });
     let mut tick = tokio::time::interval(Duration::from_secs(1));
-    let mut minute = tokio::time::interval(Duration::from_secs(60));
-    minute.tick().await;
     loop {
         if app.should_quit {
             break;
@@ -70,9 +67,8 @@ pub async fn run_crossterm(
                     _ => {}
                 }
             }
-            _ = tick.tick() => {}
-            _ = minute.tick() => {
-                app.start_refresh(RefreshTrigger::Timer);
+            _ = tick.tick() => {
+                app.on_tick();
             }
             msg = fetch_rx.recv(), if app.fetching => {
                 if let Some((id, status)) = msg {
