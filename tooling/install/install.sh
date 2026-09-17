@@ -1,15 +1,17 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # Install token-balance + tb from the latest GitHub release.
 # Usage: curl -fsSL https://raw.githubusercontent.com/ErcinDedeoglu/token-balance/main/tooling/install/install.sh | sh
-set -euo pipefail
+# POSIX: must run under dash (/bin/sh on Debian/Ubuntu).
+set -eu
 
 REPO="${TOKEN_BALANCE_REPO:-ErcinDedeoglu/token-balance}"
 
 die() { echo "token-balance install: $*" >&2; exit 1; }
 
 map_target() {
-  local os=$1 arch=$2
-  case "$os/$arch" in
+  os_=$1
+  arch_=$2
+  case "$os_/$arch_" in
     Darwin/arm64) echo aarch64-apple-darwin ;;
     Darwin/x86_64) echo x86_64-apple-darwin ;;
     Linux/x86_64) echo x86_64-unknown-linux-gnu ;;
@@ -19,11 +21,11 @@ map_target() {
       echo "token-balance install: Windows ARM64 is not in GitHub releases yet. Use: cargo install --git https://github.com/${REPO} --locked" >&2
       return 1
       ;;
-    *) die "unsupported platform $os $arch" ;;
+    *) die "unsupported platform $os_ $arch_" ;;
   esac
 }
 
-if [[ "${1:-}" == --print-target ]]; then
+if [ "${1:-}" = "--print-target" ]; then
   map_target "${2:?os}" "${3:?arch}"
   exit $?
 fi
@@ -50,7 +52,8 @@ else
 fi
 
 url="https://github.com/${REPO}/releases/latest/download/token-balance-${target}.tar.gz"
-tmp=$(mktemp -d)
+tmp=${TMPDIR:-/tmp}/tb-install-$$
+mkdir -p "$tmp"
 trap 'rm -rf "$tmp"' EXIT
 echo "downloading $url"
 fetch "$url" "$tmp/tb.tgz"

@@ -13,27 +13,32 @@ fn unixy(p: &Path) -> String {
     p.to_string_lossy().replace('\\', "/")
 }
 
-fn bash() -> Command {
-    if cfg!(windows) {
-        for c in [
-            r"C:\Program Files\Git\bin\bash.exe",
-            r"C:\Program Files (x86)\Git\bin\bash.exe",
-        ] {
-            if Path::new(c).exists() {
-                return Command::new(c);
-            }
+fn posix_sh() -> Command {
+    let candidates = [
+        "/bin/dash",
+        "/usr/bin/dash",
+        r"C:\Program Files\Git\usr\bin\dash.exe",
+        r"C:\Program Files\Git\bin\dash.exe",
+        r"C:\Program Files\Git\bin\sh.exe",
+        r"C:\Program Files (x86)\Git\bin\sh.exe",
+        "/bin/sh",
+        "/usr/bin/sh",
+    ];
+    for c in candidates {
+        if Path::new(c).exists() {
+            return Command::new(c);
         }
     }
-    Command::new("bash")
+    Command::new("sh")
 }
 
 fn print_target(os: &str, arch: &str) -> (bool, String, String) {
     let script = repo_root().join("tooling/install/install.sh");
-    let out = bash()
+    let out = posix_sh()
         .arg(unixy(&script))
         .args(["--print-target", os, arch])
         .output()
-        .expect("bash install.sh --print-target");
+        .expect("sh install.sh --print-target");
     (
         out.status.success(),
         String::from_utf8_lossy(&out.stdout).trim().to_string(),
@@ -43,7 +48,7 @@ fn print_target(os: &str, arch: &str) -> (bool, String, String) {
 
 fn tag_matches(tag: &str) -> bool {
     let script = repo_root().join("tooling/install/tag-matches-version.sh");
-    bash()
+    posix_sh()
         .arg(unixy(&script))
         .arg(tag)
         .status()
