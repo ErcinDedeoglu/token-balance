@@ -2,29 +2,25 @@
 
 - result: passed
 - growth: vertical
-- added: 8
-- modified: 7
+- added: 3
+- modified: 8
 - deleted: 0
 - moved: 0
 
 ## added
-- `.github/workflows/ci.yml` c294441e108f6b94
-- `.github/workflows/release.yml` 4d6a8600405b451f
-- `crates/token-balance/src/install_target.rs` 8bdb8e3e288bdca7
-- `crates/token-balance/src/install_target_test.rs` 65b8081c2ef9779d
-- `goals/GOAL-DIST-1.md` 9adedc8db507b2b9
-- `tooling/install/install.ps1` 19db10f26094d4b3
-- `tooling/install/install.sh` 0fc867458e44cdcd
-- `tooling/install/tag-matches-version.sh` 23ea080994b44914
+- `crates/token-balance/src/adapters/exa.rs` 95fbdea7c31733ea
+- `crates/token-balance/src/adapters/exa_test.rs` 63edd1ed44edb944
+- `goals/GOAL-EXA-1.md` a9ea19829a93d3ef
 
 ## modified
-- `AGENTS.md` 230f11465acb65a3
-- `Cargo.toml` 3db9ddbeb016beaa
-- `README.md` 1740ea70e4ffcec9
-- `crates/token-balance/Cargo.toml` 1466ed374b86c305
-- `crates/token-balance/src/main.rs` a443db761c445bbd
-- `memory/daily/2026-09-17.md` 6caf444fcf29ea28
-- `quality/cohesion-reviews.json` eb6d3999603a4976
+- `crates/token-balance/AGENTS.md` 289933c543753eae
+- `crates/token-balance/src/accounts.rs` f9d26cf18a0c644d
+- `crates/token-balance/src/accounts_test.rs` 507fc17bb38c4431
+- `crates/token-balance/src/adapters.rs` 7d0d6a16451a946f
+- `crates/token-balance/src/providers.rs` 9573c8c73bc5805d
+- `docs/design/layout.md` fe54481dfdd4faed
+- `docs/design/providers.md` 1245637f2fb2b65e
+- `memory/daily/2026-09-17.md` 81043c296b2fd6bf
 
 ## moved
 - (none)
