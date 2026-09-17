@@ -11,3 +11,4 @@ Bins `token-balance` and `tb` share `src/main.rs`. Ledger-1 remaining-quota boar
 - Never mix live adapters with `--fixture` in one process
 - Never call Moonshot PAYG balance, Anthropic Admin Usage, or xAI prepaid on plan cards
 - Never call Exa Team Management `/usage` (`total_cost_usd`) as remaining
+- Never commit `exa.json` dashboard cookies

@@ -76,7 +76,7 @@ pub const INIT_TEMPLATE: &str = "\
 # vendor = \"exa\"
 # id = \"exa\"
 # label = \"exa\"
-# api_key_env = \"EXA_API_KEY\"
+# credentials = \".config/token-balance/exa.json\"
 ";
 
 const INLINE_KEYS: &[&str] = &[

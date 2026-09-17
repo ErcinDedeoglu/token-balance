@@ -1,28 +1,40 @@
 use crate::accounts::Pointer;
-use crate::adapters::pointer_secret;
+use crate::adapters::{http_get_json, json_f64};
 use crate::credentials::Credentials;
-use crate::domain::{LedgerKind, ProviderStatus};
+use crate::domain::{CreditUnit, ExtraCredits, LedgerKind, ProviderStatus};
 use crate::providers::{AccountIdentity, FetchFuture, Provider, RefreshPolicy};
 use serde_json::Value;
 
-const KEY_FIELDS: &[&str] = &["api_key", "key", "exa_api_key"];
+pub const EXA_CREDITS_URL: &str = "https://dashboard.exa.ai/api/get-credits";
 
 /// Team Management `GET .../api-keys/{id}/usage` is spend (`total_cost_usd`), not remaining.
-/// Remaining is dashboard-only: https://dashboard.exa.ai/billing
 pub const EXA_USAGE_SPEND_NOTE: &str =
     "exa: total_cost_usd is Team Management usage spend, not remaining";
 
 pub struct ExaAdapter {
     ident: AccountIdentity,
-    key: Option<String>,
+    unofficial_url: Option<String>,
+    cookie: Option<String>,
     recorded: Option<Value>,
 }
 
 impl ExaAdapter {
     pub fn from_account(c: &Credentials, ident: AccountIdentity, pointer: &Pointer) -> Self {
+        let unofficial_url = match pointer {
+            Pointer::File(p) if p.starts_with("http://") || p.starts_with("https://") => {
+                Some(p.clone())
+            }
+            _ => None,
+        };
+        let cookie = if unofficial_url.is_none() {
+            load_cookie(c, pointer)
+        } else {
+            None
+        };
         Self {
             ident,
-            key: pointer_secret(c, pointer, KEY_FIELDS),
+            unofficial_url,
+            cookie,
             recorded: None,
         }
     }
@@ -31,9 +43,38 @@ impl ExaAdapter {
     pub fn with_recorded(json: Value) -> Self {
         Self {
             ident: AccountIdentity::vendor_default("exa", "exa"),
-            key: Some("redacted".into()),
+            unofficial_url: None,
+            cookie: Some("redacted".into()),
             recorded: Some(json),
         }
+    }
+}
+
+fn load_cookie(c: &Credentials, pointer: &Pointer) -> Option<String> {
+    let Pointer::File(p) = pointer else {
+        return None;
+    };
+    let text = c.read_to_string(p)?;
+    if let Ok(v) = serde_json::from_str::<Value>(&text) {
+        if let Some(s) = v.get("cookie").and_then(|x| x.as_str()) {
+            let t = s.trim();
+            if !t.is_empty() {
+                return Some(t.to_string());
+            }
+        }
+        if let Some(s) = v.get("session_token").and_then(|x| x.as_str()) {
+            let t = s.trim();
+            if !t.is_empty() {
+                return Some(format!("next-auth.session-token={t}"));
+            }
+        }
+        return None;
+    }
+    let t = text.trim();
+    if t.is_empty() {
+        None
+    } else {
+        Some(t.to_string())
     }
 }
 
@@ -43,16 +84,6 @@ fn tag_of(v: &Value) -> Option<&str> {
         .or_else(|| v.get("error").and_then(|e| e.get("tag")).and_then(|x| x.as_str()))
 }
 
-fn has_remaining_balance(v: &Value) -> bool {
-    v.get("remaining").is_some()
-        || v.get("remaining_balance").is_some()
-        || v.get("current_balance").is_some()
-        || v
-            .get("credits")
-            .and_then(|c| c.get("current_balance"))
-            .is_some()
-}
-
 pub fn map_exa_json(v: &Value) -> ProviderStatus {
     if tag_of(v) == Some("NO_MORE_CREDITS") {
         return ProviderStatus::Error {
@@ -60,20 +91,33 @@ pub fn map_exa_json(v: &Value) -> ProviderStatus {
             stale: None,
         };
     }
-    if v.get("total_cost_usd").is_some() && !has_remaining_balance(v) {
+    if let Some(cents) = json_f64(&v["orbCreditsInCents"]) {
+        let remaining = cents / 100.0;
+        return ProviderStatus::Available {
+            plan: Some("Pay as you go".into()),
+            windows: Vec::new(),
+            extra: Some(ExtraCredits {
+                label: "USD".into(),
+                remaining,
+                unit: CreditUnit::Usd,
+                limit: None,
+            }),
+        };
+    }
+    if v.get("total_cost_usd").is_some() {
         return ProviderStatus::Error {
             message: EXA_USAGE_SPEND_NOTE.into(),
             stale: None,
         };
     }
-    if v.get("cost_breakdown").is_some() && !has_remaining_balance(v) {
+    if v.get("cost_breakdown").is_some() {
         return ProviderStatus::Error {
             message: EXA_USAGE_SPEND_NOTE.into(),
             stale: None,
         };
     }
     ProviderStatus::Error {
-        message: "exa: no remaining-balance field; remaining is on https://dashboard.exa.ai/billing"
+        message: "exa: no orbCreditsInCents; remaining is on https://dashboard.exa.ai/billing"
             .into(),
         stale: None,
     }
@@ -93,26 +137,54 @@ impl Provider for ExaAdapter {
         LedgerKind::PrepaidWallet
     }
     fn docs_url(&self) -> Option<&'static str> {
-        Some("https://exa.ai/docs/reference/billing")
+        Some("https://dashboard.exa.ai/billing")
     }
     fn refresh_policy(&self) -> RefreshPolicy {
         RefreshPolicy::Default
     }
     fn fetch(&self) -> FetchFuture {
-        if self.key.is_none() && self.recorded.is_none() {
+        if self.recorded.is_none()
+            && self.cookie.is_none()
+            && self.unofficial_url.is_none()
+        {
             return Box::pin(async {
                 ProviderStatus::NotConfigured {
-                    hint: "export EXA_API_KEY or point credentials at an Exa key file".into(),
+                    hint: "point credentials at ~/.config/token-balance/exa.json with dashboard cookie".into(),
                 }
             });
         }
         if let Some(v) = self.recorded.clone() {
             return Box::pin(async move { map_exa_json(&v) });
         }
-        Box::pin(async {
-            ProviderStatus::Unsupported {
-                reason: "exa remaining is on https://dashboard.exa.ai/billing; no remaining-balance GET"
-                    .into(),
+        if let Some(url) = self.unofficial_url.clone() {
+            return Box::pin(async move {
+                match http_get_json(&url, &[]).await {
+                    Ok(v) => map_exa_json(&v),
+                    Err(e) => ProviderStatus::Error {
+                        message: e,
+                        stale: None,
+                    },
+                }
+            });
+        }
+        let cookie = self.cookie.clone().unwrap();
+        Box::pin(async move {
+            let headers = [
+                ("Cookie", cookie),
+                ("Accept", "application/json, text/plain, */*".into()),
+                ("Referer", "https://dashboard.exa.ai/billing".into()),
+                ("Origin", "https://dashboard.exa.ai".into()),
+                (
+                    "User-Agent",
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36".into(),
+                ),
+            ];
+            match http_get_json(EXA_CREDITS_URL, &headers).await {
+                Ok(v) => map_exa_json(&v),
+                Err(e) => ProviderStatus::Error {
+                    message: format!("exa: {e} (refresh dashboard cookie in exa.json)"),
+                    stale: None,
+                },
             }
         })
     }
