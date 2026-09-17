@@ -110,12 +110,12 @@ n/a
 
 | AC | Result | Proof |
 | --- | --- | --- |
-| AC-1 | pending | |
-| AC-2 | pending | |
-| AC-3 | pending | |
-| AC-4 | pending | |
-| AC-5 | pending | |
-| AC-6 | pending | |
+| AC-1 | pending | `a3c9444` on `main`; CI run https://github.com/ErcinDedeoglu/token-balance/actions/runs/35189620257 in_progress |
+| AC-2 | pending | workflow on `main`; tag not pushed until CI green |
+| AC-3 | pass | `README.md` lines 13, 21, 27: curl install.sh, irm install.ps1, cargo install --git |
+| AC-4 | pending | mapping tests pass; live installer waits for release assets |
+| AC-5 | pass | `cargo test -p token-balance --locked -- install_target`: `windows_arm64_refuses_with_cargo_install_git` ok; install.ps1 Arm64 throw before Invoke-WebRequest |
+| AC-6 | pass | `bash tooling/install/tag-matches-version.sh v0.1.1` exit 1; `v0.1.0` exit 0; release.yml calls that script |
 
 ## Risks
 

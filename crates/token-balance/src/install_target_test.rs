@@ -1,5 +1,5 @@
 use super::*;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 fn repo_root() -> PathBuf {
@@ -9,10 +9,29 @@ fn repo_root() -> PathBuf {
         .expect("repo root")
 }
 
+fn unixy(p: &Path) -> String {
+    p.to_string_lossy().replace('\\', "/")
+}
+
+fn bash() -> Command {
+    if cfg!(windows) {
+        for c in [
+            r"C:\Program Files\Git\bin\bash.exe",
+            r"C:\Program Files (x86)\Git\bin\bash.exe",
+        ] {
+            if Path::new(c).exists() {
+                return Command::new(c);
+            }
+        }
+    }
+    Command::new("bash")
+}
+
 fn print_target(os: &str, arch: &str) -> (bool, String, String) {
     let script = repo_root().join("tooling/install/install.sh");
-    let out = Command::new("bash")
-        .args([script.to_str().unwrap(), "--print-target", os, arch])
+    let out = bash()
+        .arg(unixy(&script))
+        .args(["--print-target", os, arch])
         .output()
         .expect("bash install.sh --print-target");
     (
@@ -24,8 +43,9 @@ fn print_target(os: &str, arch: &str) -> (bool, String, String) {
 
 fn tag_matches(tag: &str) -> bool {
     let script = repo_root().join("tooling/install/tag-matches-version.sh");
-    Command::new("bash")
-        .args([script.to_str().unwrap(), tag])
+    bash()
+        .arg(unixy(&script))
+        .arg(tag)
         .status()
         .expect("tag-matches-version.sh")
         .success()
@@ -34,8 +54,8 @@ fn tag_matches(tag: &str) -> bool {
 #[test]
 fn darwin_arm64_is_aarch64_apple_darwin() {
     assert_eq!(rustc_target("Darwin", "arm64"), Ok("aarch64-apple-darwin"));
-    let (ok, stdout, _) = print_target("Darwin", "arm64");
-    assert!(ok, "install.sh --print-target Darwin arm64");
+    let (ok, stdout, stderr) = print_target("Darwin", "arm64");
+    assert!(ok, "install.sh --print-target Darwin arm64: {stderr}");
     assert_eq!(stdout, "aarch64-apple-darwin");
 }
 
