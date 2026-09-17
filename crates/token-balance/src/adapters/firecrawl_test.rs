@@ -27,6 +27,21 @@ fn remaining_credits_is_wallet_not_percent() {
 }
 
 #[test]
+fn remaining_above_plan_credits_omits_limit() {
+    let v = json!({
+        "success": true,
+        "data": {"remainingCredits": 9112, "planCredits": 1000}
+    });
+    let extra = effective_available(&map_firecrawl_credits(&v))
+        .unwrap()
+        .extra
+        .clone()
+        .unwrap();
+    assert_eq!(extra.remaining, 9112.0);
+    assert!(extra.limit.is_none());
+}
+
+#[test]
 fn v1_snake_case_remaining_credits() {
     let v = json!({"success": true, "data": {"remaining_credits": 42}});
     let extra = effective_available(&map_firecrawl_credits(&v))

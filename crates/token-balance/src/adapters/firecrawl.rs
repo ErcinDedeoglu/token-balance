@@ -59,7 +59,7 @@ pub fn map_firecrawl_credits(v: &Value) -> ProviderStatus {
             stale: None,
         };
     };
-    let limit = plan_credits_field(data);
+    let limit = plan_credits_field(data).filter(|&p| remaining <= p);
     ProviderStatus::Available {
         plan: None,
         windows: Vec::new(),
