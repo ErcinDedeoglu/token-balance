@@ -2,6 +2,15 @@ use super::*;
 use crate::domain::{CreditUnit, ProviderStatus, WindowLabel, effective_available};
 use serde_json::json;
 
+#[test]
+fn dashboard_429_is_rate_limit_not_cookie() {
+    let m = dashboard_http_error(429);
+    assert!(m.contains("429"), "{m}");
+    assert!(!m.to_ascii_lowercase().contains("cookie"), "{m}");
+    let expired = dashboard_http_error(401);
+    assert!(expired.contains("exa.json"), "{expired}");
+}
+
 fn assert_no_plan_windows(status: &ProviderStatus) {
     if let Some(av) = effective_available(status) {
         for w in av.windows {

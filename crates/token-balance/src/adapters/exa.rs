@@ -4,8 +4,10 @@ use crate::credentials::Credentials;
 use crate::domain::{CreditUnit, ExtraCredits, LedgerKind, ProviderStatus};
 use crate::providers::{AccountIdentity, FetchFuture, Provider, RefreshPolicy};
 use serde_json::Value;
+use std::time::Duration;
 
 pub const EXA_CREDITS_URL: &str = "https://dashboard.exa.ai/api/get-credits";
+const CHROME_UA: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36";
 
 /// Team Management `GET .../api-keys/{id}/usage` is spend (`total_cost_usd`), not remaining.
 pub const EXA_USAGE_SPEND_NOTE: &str =
@@ -123,6 +125,42 @@ pub fn map_exa_json(v: &Value) -> ProviderStatus {
     }
 }
 
+pub fn dashboard_http_error(status: u16) -> String {
+    match status {
+        429 => "exa: HTTP 429 Too Many Requests".into(),
+        401 | 403 => "exa: dashboard session expired (refresh cookie in exa.json)".into(),
+        n => format!("exa: HTTP {n}"),
+    }
+}
+
+async fn get_credits(cookie: &str) -> Result<Value, String> {
+    let client = reqwest::Client::builder()
+        .user_agent(CHROME_UA)
+        .use_native_tls()
+        .http1_only()
+        .gzip(true)
+        .build()
+        .map_err(|e| e.to_string())?;
+    let resp = client
+        .get(EXA_CREDITS_URL)
+        .header("Cookie", cookie)
+        .header("Accept", "application/json, text/plain, */*")
+        .header("Accept-Language", "en-US,en;q=0.9")
+        .header("Origin", "https://dashboard.exa.ai")
+        .header("Referer", "https://dashboard.exa.ai/billing")
+        .header("Sec-Fetch-Dest", "empty")
+        .header("Sec-Fetch-Mode", "cors")
+        .header("Sec-Fetch-Site", "same-origin")
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    let status = resp.status();
+    if !status.is_success() {
+        return Err(dashboard_http_error(status.as_u16()));
+    }
+    resp.json().await.map_err(|e| e.to_string())
+}
+
 impl Provider for ExaAdapter {
     fn id(&self) -> &str {
         &self.ident.id
@@ -140,7 +178,7 @@ impl Provider for ExaAdapter {
         Some("https://dashboard.exa.ai/billing")
     }
     fn refresh_policy(&self) -> RefreshPolicy {
-        RefreshPolicy::Default
+        RefreshPolicy::Interval(Duration::from_secs(180))
     }
     fn fetch(&self) -> FetchFuture {
         if self.recorded.is_none()
@@ -169,20 +207,10 @@ impl Provider for ExaAdapter {
         }
         let cookie = self.cookie.clone().unwrap();
         Box::pin(async move {
-            let headers = [
-                ("Cookie", cookie),
-                ("Accept", "application/json, text/plain, */*".into()),
-                ("Referer", "https://dashboard.exa.ai/billing".into()),
-                ("Origin", "https://dashboard.exa.ai".into()),
-                (
-                    "User-Agent",
-                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36".into(),
-                ),
-            ];
-            match http_get_json(EXA_CREDITS_URL, &headers).await {
+            match get_credits(&cookie).await {
                 Ok(v) => map_exa_json(&v),
                 Err(e) => ProviderStatus::Error {
-                    message: format!("exa: {e} (refresh dashboard cookie in exa.json)"),
+                    message: e,
                     stale: None,
                 },
             }

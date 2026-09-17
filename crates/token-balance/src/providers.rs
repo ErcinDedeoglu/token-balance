@@ -38,7 +38,7 @@ pub fn refresh_period(policy: RefreshPolicy) -> Option<Duration> {
 
 pub fn error_backoff(message: &str) -> Duration {
     let m = message.to_ascii_lowercase();
-    if m.contains("rate limit") {
+    if m.contains("rate limit") || m.contains("429") || m.contains("too many requests") {
         Duration::from_secs(180)
     } else if m.contains("timed out") {
         Duration::from_secs(15)
@@ -149,6 +149,10 @@ mod tests {
     fn error_backoff_rate_limit_is_longer_than_timeout() {
         assert_eq!(
             error_backoff("muse-web: Rate limit exceeded"),
+            Duration::from_secs(180)
+        );
+        assert_eq!(
+            error_backoff("exa: HTTP 429 Too Many Requests"),
             Duration::from_secs(180)
         );
         assert_eq!(error_backoff("timed out"), Duration::from_secs(15));
