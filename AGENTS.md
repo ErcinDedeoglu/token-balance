@@ -6,7 +6,7 @@
 
 | Task | Command |
 |------|---------|
-| Install | n/a |
+| Install | `cargo install --path crates/token-balance --locked` |
 | Dev | `cargo run -p token-balance --bin token-balance -- --fixture mixed` |
 | Test | `cargo test -p token-balance` |
 | Lint | n/a |

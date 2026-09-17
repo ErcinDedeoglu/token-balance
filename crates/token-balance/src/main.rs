@@ -1,5 +1,6 @@
 mod accounts;
 mod adapters;
+mod install_target;
 mod board;
 mod cards;
 mod credentials;

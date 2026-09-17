@@ -1,0 +1,83 @@
+name: release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+          - os: macos-13
+            target: x86_64-apple-darwin
+          - os: macos-latest
+            target: aarch64-apple-darwin
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      - name: Build
+        run: cargo build -p token-balance --release --locked --target ${{ matrix.target }}
+      - name: Pack
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="target/pack"
+          mkdir -p "$out"
+          bin="target/${{ matrix.target }}/release"
+          if [[ "${{ matrix.target }}" == *windows* ]]; then
+            tar -C "$bin" -a -cf "$out/token-balance-${{ matrix.target }}.zip" \
+              token-balance.exe tb.exe
+          else
+            tar -C "$bin" -czf "$out/token-balance-${{ matrix.target }}.tar.gz" \
+              token-balance tb
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: token-balance-${{ matrix.target }}
+          path: target/pack/*
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tag matches Cargo.toml
+        run: bash tooling/install/tag-matches-version.sh "$GITHUB_REF_NAME"
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Checksums
+        run: |
+          set -euo pipefail
+          cd artifacts
+          sha256sum token-balance-* > sha256sums.txt
+          ls -l
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: artifacts/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

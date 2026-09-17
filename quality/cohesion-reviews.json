@@ -3,7 +3,7 @@
     {
       "path": "AGENTS.md",
       "class": "root-agent-entry",
-      "sha256": "76c31515e8d08330ce1a17173cc056b458676de2b130e3e53c0e5616aee394a8",
+      "sha256": "230f11465acb65a3cfb59dfdcc9ca13394ba79a15d9f13f260f00b64c4d5941c",
       "concern": "root operating-manual index",
       "rationale": "Always-loaded index of commands, pointers, MUST gates, boundaries, and the memory loop. Splitting would scatter the entry file and force every session to reassemble it.",
       "kind": "keep-cohesive"
