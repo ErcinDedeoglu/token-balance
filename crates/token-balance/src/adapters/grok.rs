@@ -1,5 +1,5 @@
 use crate::accounts::Pointer;
-use crate::adapters::{http_get_json, json_f64, pointer_secret};
+use crate::adapters::{json_f64, pointer_secret};
 use crate::credentials::Credentials;
 use crate::domain::{CreditUnit, ExtraCredits, ProviderStatus, QuotaWindow, WindowLabel};
 use crate::providers::{AccountIdentity, FetchFuture, Provider, RefreshPolicy};
@@ -94,6 +94,30 @@ pub fn map_grok_billing(v: &Value) -> ProviderStatus {
     }
 }
 
+async fn get_billing(token: &str) -> Result<Value, String> {
+    // rustls/default reqwest was 401 on this host; curl/urllib 200 with the same JWT.
+    let client = reqwest::Client::builder()
+        .user_agent("grok-shell")
+        .use_native_tls()
+        .http1_only()
+        .build()
+        .map_err(|e| e.to_string())?;
+    let resp = client
+        .get(GROK_BILLING_URL)
+        .header("Authorization", format!("Bearer {token}"))
+        .header("X-XAI-Token-Auth", "xai-grok-cli")
+        .header("Accept", "application/json")
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    let status = resp.status();
+    let text = resp.text().await.map_err(|e| e.to_string())?;
+    if !status.is_success() {
+        return Err(format!("HTTP {status}"));
+    }
+    serde_json::from_str(&text).map_err(|e| e.to_string())
+}
+
 impl Provider for GrokAdapter {
     fn id(&self) -> &str {
         &self.ident.id
@@ -123,16 +147,7 @@ impl Provider for GrokAdapter {
         }
         let token = self.token.clone().unwrap();
         Box::pin(async move {
-            match http_get_json(
-                GROK_BILLING_URL,
-                &[
-                    ("Authorization", format!("Bearer {token}")),
-                    ("X-XAI-Token-Auth", "xai-grok-cli".into()),
-                    ("Accept", "application/json".into()),
-                ],
-            )
-            .await
-            {
+            match get_billing(&token).await {
                 Ok(v) => map_grok_billing(&v),
                 Err(e) => ProviderStatus::Error {
                     message: e,
