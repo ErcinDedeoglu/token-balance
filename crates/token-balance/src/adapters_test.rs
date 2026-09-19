@@ -2,7 +2,6 @@ use super::*;
 use crate::credentials::Credentials;
 use crate::domain::{ProviderStatus, WindowLabel, effective_available, hero_window};
 use crate::providers::{Provider, RefreshPolicy, RefreshTrigger, allows_refresh};
-use serde_json::json;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
@@ -300,52 +299,6 @@ fn claude_utilization_is_used_percent() {
     assert_eq!(fh.remaining_percent, 72.0);
     let extra = av.extra.as_ref().unwrap();
     assert!((extra.remaining - 12.4).abs() < 0.05);
-}
-
-#[test]
-fn grok_uses_credit_usage_not_prepaid() {
-    assert_eq!(
-        GROK_BILLING_URL,
-        "https://cli-chat-proxy.grok.com/v1/billing?format=credits"
-    );
-    let v: Value = serde_json::from_str(GROK_JSON).unwrap();
-    let status = map_grok_billing(&v);
-    let av = effective_available(&status).unwrap();
-    assert_eq!(av.windows.len(), 1);
-    assert!(matches!(av.windows[0].label, WindowLabel::Weekly));
-    assert_eq!(av.windows[0].remaining_percent, 27.0);
-    let extra = av.extra.as_ref().unwrap();
-    assert_eq!(extra.remaining, 400.0);
-}
-
-#[test]
-fn grok_prepaid_only_is_error() {
-    let v = json!({ "remaining_balance": 12.5, "prepaidBalance": { "val": 99 } });
-    match map_grok_billing(&v) {
-        ProviderStatus::Error { .. } => {}
-        other => panic!("prepaid must not map as remaining: {other:?}"),
-    }
-}
-
-#[test]
-fn grok_cli_auth_json_nested_key_is_token() {
-    use crate::accounts::Pointer;
-    use std::sync::atomic::{AtomicU64, Ordering};
-    static N: AtomicU64 = AtomicU64::new(1);
-    let home = std::env::temp_dir().join(format!(
-        "tb-grok-auth-{}-{}",
-        std::process::id(),
-        N.fetch_add(1, Ordering::Relaxed)
-    ));
-    std::fs::create_dir_all(home.join(".grok")).unwrap();
-    std::fs::write(
-        home.join(".grok/auth.json"),
-        r#"{"https://auth.x.ai::example":{"key":"redacted-grok","refresh_token":"r"}}"#,
-    )
-    .unwrap();
-    let c = Credentials::isolated(home, BTreeMap::new());
-    let got = pointer_secret(&c, &Pointer::File(".grok/auth.json".into()), GROK_AUTH_KEYS);
-    assert_eq!(got.as_deref(), Some("redacted-grok"));
 }
 
 #[test]

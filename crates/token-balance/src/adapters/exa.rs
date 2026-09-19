@@ -5,9 +5,9 @@ use crate::domain::{CreditUnit, ExtraCredits, LedgerKind, ProviderStatus};
 use crate::providers::{AccountIdentity, FetchFuture, Provider, RefreshPolicy};
 use serde_json::Value;
 use std::time::Duration;
+use wreq_util::Emulation;
 
 pub const EXA_CREDITS_URL: &str = "https://dashboard.exa.ai/api/get-credits";
-const CHROME_UA: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36";
 
 /// Team Management `GET .../api-keys/{id}/usage` is spend (`total_cost_usd`), not remaining.
 pub const EXA_USAGE_SPEND_NOTE: &str =
@@ -134,9 +134,10 @@ pub fn dashboard_http_error(status: u16) -> String {
 }
 
 async fn get_credits(cookie: &str) -> Result<Value, String> {
-    let client = reqwest::Client::builder()
-        .user_agent(CHROME_UA)
-        .use_native_tls()
+    // Vercel Security Checkpoint 429s stock reqwest/curl TLS. wreq Chrome
+    // emulation + HTTP/1.1 is the path that returns orbCreditsInCents.
+    let client = wreq::Client::builder()
+        .emulation(Emulation::Chrome131)
         .http1_only()
         .gzip(true)
         .build()

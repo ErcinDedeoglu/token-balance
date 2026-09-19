@@ -34,8 +34,6 @@ pub use deepseek::map_deepseek_balance;
 #[cfg(test)]
 pub use codex::map_codex_rate_limits;
 #[cfg(test)]
-pub use grok::{GROK_AUTH_KEYS, GROK_BILLING_URL, map_grok_billing};
-#[cfg(test)]
 pub use kiro::map_kiro_usage;
 #[cfg(test)]
 pub use kimi::{KIMI_USAGES_URL, map_kimi_usages};

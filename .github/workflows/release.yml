@@ -36,6 +36,14 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.target }}
+      - name: cmake (BoringSSL / wreq)
+        shell: bash
+        run: |
+          case "${{ runner.os }}" in
+            Linux) sudo apt-get update && sudo apt-get install -y cmake pkg-config clang libclang-dev ;;
+            macOS) brew install cmake ;;
+            Windows) choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' -y ;;
+          esac
       - name: Build
         run: cargo build -p token-balance --release --locked --target ${{ matrix.target }}
       - name: Pack (unix)

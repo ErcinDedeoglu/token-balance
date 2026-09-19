@@ -21,6 +21,9 @@ Index only. Keep ≤200 lines / 25 KB. Details live in linked files. Memory is a
 
 - [control-files-need-nested-agents](lessons/quality/control-files-need-nested-agents.md) — quality/nested-agents-before-top-level-files — `quality/` still needs nested AGENTS.md
 - [design-folder-by-concern](lessons/docs/design-folder-by-concern.md) — docs/design-docs-split-by-concern — oversized designs go in `docs/design/` by concern
+- [grok-reread-auth-on-fetch](lessons/adapters/grok-reread-auth-on-fetch.md) — adapters/grok-reread-auth-on-fetch — Grok JWT is re-read on each fetch; 401 means `grok login` after curl check
+- [exa-wreq-http1-checkpoint](lessons/adapters/exa-wreq-http1-checkpoint.md) — adapters/exa-wreq-http1-checkpoint — Exa remaining uses wreq Chrome131 HTTP/1; stock reqwest 429s Vercel
+- [muse-429-is-exhausted-everyday](lessons/adapters/muse-429-is-exhausted-everyday.md) — adapters/muse-429-is-exhausted-everyday — Muse 429 + resets_at is 0% Everyday, not a dead token
 
 ## Patterns
 

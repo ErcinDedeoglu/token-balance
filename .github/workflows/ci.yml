@@ -28,6 +28,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      - name: cmake (BoringSSL / wreq)
+        shell: bash
+        run: |
+          case "${{ runner.os }}" in
+            Linux) sudo apt-get update && sudo apt-get install -y cmake pkg-config clang libclang-dev ;;
+            macOS) brew install cmake ;;
+            Windows) choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' -y ;;
+          esac
       - name: Test
         run: cargo test -p token-balance --locked
       - name: Build

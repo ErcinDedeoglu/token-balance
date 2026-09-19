@@ -11,7 +11,7 @@ pub const GROK_AUTH_KEYS: &[&str] = &["token", "access_token", "accessToken", "k
 
 pub struct GrokAdapter {
     ident: AccountIdentity,
-    token: Option<String>,
+    live: Option<(Credentials, Pointer)>,
     recorded: Option<Value>,
 }
 
@@ -19,7 +19,7 @@ impl GrokAdapter {
     pub fn from_account(c: &Credentials, ident: AccountIdentity, pointer: &Pointer) -> Self {
         Self {
             ident,
-            token: pointer_secret(c, pointer, GROK_AUTH_KEYS),
+            live: Some((c.clone(), pointer.clone())),
             recorded: None,
         }
     }
@@ -37,9 +37,14 @@ impl GrokAdapter {
     pub fn with_recorded(json: Value) -> Self {
         Self {
             ident: AccountIdentity::vendor_default("grok", "Grok"),
-            token: Some("redacted".into()),
+            live: None,
             recorded: Some(json),
         }
+    }
+
+    fn live_token(&self) -> Option<String> {
+        let (c, pointer) = self.live.as_ref()?;
+        pointer_secret(c, pointer, GROK_AUTH_KEYS)
     }
 }
 
@@ -113,9 +118,16 @@ async fn get_billing(token: &str) -> Result<Value, String> {
     let status = resp.status();
     let text = resp.text().await.map_err(|e| e.to_string())?;
     if !status.is_success() {
-        return Err(format!("HTTP {status}"));
+        return Err(billing_http_error(status.as_u16()));
     }
     serde_json::from_str(&text).map_err(|e| e.to_string())
+}
+
+pub fn billing_http_error(status: u16) -> String {
+    match status {
+        401 => "HTTP 401 Unauthorized — grok login".into(),
+        n => format!("HTTP {n}"),
+    }
 }
 
 impl Provider for GrokAdapter {
@@ -135,17 +147,16 @@ impl Provider for GrokAdapter {
         RefreshPolicy::Default
     }
     fn fetch(&self) -> FetchFuture {
-        if self.token.is_none() && self.recorded.is_none() {
+        if let Some(v) = self.recorded.clone() {
+            return Box::pin(async move { map_grok_billing(&v) });
+        }
+        let Some(token) = self.live_token() else {
             return Box::pin(async {
                 ProviderStatus::NotConfigured {
                     hint: "grok login".into(),
                 }
             });
-        }
-        if let Some(v) = self.recorded.clone() {
-            return Box::pin(async move { map_grok_billing(&v) });
-        }
-        let token = self.token.clone().unwrap();
+        };
         Box::pin(async move {
             match get_billing(&token).await {
                 Ok(v) => map_grok_billing(&v),
@@ -157,3 +168,7 @@ impl Provider for GrokAdapter {
         })
     }
 }
+
+#[cfg(test)]
+#[path = "grok_test.rs"]
+mod tests;

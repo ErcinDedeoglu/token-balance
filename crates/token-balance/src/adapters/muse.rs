@@ -1,5 +1,5 @@
 use crate::accounts::Pointer;
-use crate::adapters::{http_post_text, json_f64, pointer_secret};
+use crate::adapters::{json_f64, pointer_secret};
 use crate::credentials::{Credentials, json_field};
 use crate::domain::{ProviderStatus, QuotaWindow, WindowLabel};
 use crate::providers::{AccountIdentity, FetchFuture, Provider, RefreshPolicy};
@@ -30,11 +30,7 @@ fn muse_token(c: &Credentials, pointer: &Pointer) -> Option<String> {
 pub fn token_from_keychain_blob(blob: &str) -> Option<String> {
     json_field(blob, MUSE_TOKEN_KEYS).or_else(|| {
         let t = blob.trim();
-        if t.is_empty() || t.starts_with('{') {
-            None
-        } else {
-            Some(t.to_string())
-        }
+        (!t.is_empty() && !t.starts_with('{')).then(|| t.to_string())
     })
 }
 
@@ -72,27 +68,7 @@ impl MuseAdapter {
         pointer: &Pointer,
         on_demand: bool,
     ) -> Self {
-        Self {
-            ident,
-            on_demand,
-            token: muse_token(c, pointer),
-            payg_only: false,
-            recorded: None,
-        }
-    }
-
-    #[cfg(test)]
-    pub fn from_credentials(c: &Credentials, on_demand: bool) -> Self {
-        let file = muse_token(c, &Pointer::File(".config/muse/auth.json".into()));
-        let payg = c.env("META_API_KEY").map(str::to_string);
-        let payg_only = file.is_none() && payg.is_some();
-        Self {
-            ident: AccountIdentity::vendor_default("muse", "Muse"),
-            on_demand,
-            token: file,
-            payg_only,
-            recorded: None,
-        }
+        Self { ident, on_demand, token: muse_token(c, pointer), payg_only: false, recorded: None }
     }
 
     #[cfg(test)]
@@ -220,22 +196,71 @@ fn muse_resets(v: &Value) -> Option<DateTime<Utc>> {
     Utc.timestamp_opt(secs as i64, 0).single()
 }
 
+pub fn map_muse_http(status: u16, text: &str) -> ProviderStatus {
+    if status == 429 {
+        return map_muse_exhausted(text).unwrap_or(ProviderStatus::Error {
+            message: "HTTP 429 Too Many Requests".into(),
+            stale: None,
+        });
+    }
+    if !(200..300).contains(&status) {
+        return ProviderStatus::Error {
+            message: format!("HTTP {status}"),
+            stale: None,
+        };
+    }
+    map_muse_sse(text)
+}
+
+fn map_muse_exhausted(text: &str) -> Option<ProviderStatus> {
+    let v: Value = serde_json::from_str(text.trim()).ok()?;
+    let err = v.get("error").unwrap_or(&v);
+    let resets = muse_resets(&err["resets_at"]).or_else(|| muse_resets(&v["resets_at"]));
+    let code = err.get("code").and_then(|x| x.as_str()).unwrap_or("");
+    let msg = err.get("message").and_then(|x| x.as_str()).unwrap_or("");
+    let low = msg.to_ascii_lowercase();
+    let exhausted = resets.is_some()
+        || (code == "rate_limit_exceeded" && low.contains("quota"))
+        || low.contains("quota exhausted");
+    exhausted.then(|| ProviderStatus::Available {
+        plan: Some("Everyday".into()),
+        windows: vec![QuotaWindow::from_used_percent(
+            WindowLabel::FiveHour,
+            100.0,
+            resets,
+            Some(300),
+        )],
+        extra: None,
+    })
+}
+
+async fn post_responses(token: &str) -> Result<(u16, String), String> {
+    let resp = reqwest::Client::new()
+        .post(MUSE_RESPONSES_URL)
+        .header("Authorization", format!("Bearer {token}"))
+        .header("Content-Type", "application/json")
+        .header("Accept", "text/event-stream")
+        .json(&json!({
+            "model": "muse-spark-1.3",
+            "input": ".",
+            "stream": true,
+        }))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    let status = resp.status().as_u16();
+    let text = resp.text().await.map_err(|e| e.to_string())?;
+    Ok((status, text))
+}
+
 impl Provider for MuseAdapter {
-    fn id(&self) -> &str {
-        &self.ident.id
-    }
-    fn display_name(&self) -> &str {
-        &self.ident.label
-    }
-    fn vendor(&self) -> &str {
-        self.ident.vendor
-    }
+    fn id(&self) -> &str { &self.ident.id }
+    fn display_name(&self) -> &str { &self.ident.label }
+    fn vendor(&self) -> &str { self.ident.vendor }
     fn docs_url(&self) -> Option<&'static str> {
         Some("https://ai.developer.meta.com/docs/muse-code/subscriptions/")
     }
-    fn refresh_policy(&self) -> RefreshPolicy {
-        RefreshPolicy::OnDemand
-    }
+    fn refresh_policy(&self) -> RefreshPolicy { RefreshPolicy::OnDemand }
     fn fetch(&self) -> FetchFuture {
         if !self.on_demand {
             return Box::pin(async {
@@ -254,35 +279,20 @@ impl Provider for MuseAdapter {
         if let Some(sse) = self.recorded.clone() {
             return Box::pin(async move { map_muse_sse(&sse) });
         }
-        if self.token.is_none() {
+        let Some(token) = self.token.clone() else {
             return Box::pin(async {
-                ProviderStatus::NotConfigured {
-                    hint: "muse login".into(),
-                }
+                ProviderStatus::NotConfigured { hint: "muse login".into() }
             });
-        }
-        let token = self.token.clone().unwrap();
+        };
         Box::pin(async move {
-            match http_post_text(
-                MUSE_RESPONSES_URL,
-                &[
-                    ("Authorization", format!("Bearer {token}")),
-                    ("Content-Type", "application/json".into()),
-                ],
-                json!({
-                    "model": "muse-spark-1.3",
-                    "input": ".",
-                    "stream": true,
-                }),
-            )
-            .await
-            {
-                Ok(text) => map_muse_sse(&text),
-                Err(e) => ProviderStatus::Error {
-                    message: e,
-                    stale: None,
-                },
+            match post_responses(&token).await {
+                Ok((status, text)) => map_muse_http(status, &text),
+                Err(e) => ProviderStatus::Error { message: e, stale: None },
             }
         })
     }
 }
+
+#[cfg(test)]
+#[path = "muse_test.rs"]
+mod tests;
