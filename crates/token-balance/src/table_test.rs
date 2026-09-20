@@ -179,8 +179,8 @@ async fn table_toggle_restores_seven_row_cards() {
     }
     let two_col = cards
         .lines()
-        .any(|l| l.contains('┌') && l.contains("Codex") && l.contains("Grok"));
-    assert!(two_col, "2-col Codex|Grok missing:\n{cards}");
+        .any(|l| l.contains('┌') && l.contains("Codex") && l.contains("Kimi"));
+    assert!(two_col, "2-col Codex|Kimi missing:\n{cards}");
     let foot = last_line(&cards);
     assert!(
         foot.contains("t view:cards"),
@@ -278,6 +278,15 @@ async fn table_shows_session_and_weekly_percent() {
     assert!(row.contains("80%"), "weekly remaining:\n{row}\n{buf}");
     let header = header_line(&buf);
     assert_eq!(cell(header, row, "mo"), "—", "mo dash:\n{row}\n{header}");
+    let reset = cell(header, row, "reset");
+    assert!(
+        reset.contains("5d"),
+        "reset is weekly constraint not 5h session:\n{reset:?}\n{row}"
+    );
+    assert!(
+        !reset.contains("4h"),
+        "must not show full 5h clock:\n{reset:?}\n{row}"
+    );
 }
 
 #[tokio::test]

@@ -3,7 +3,7 @@ use crate::adapters::{http_get_json, json_f64, pointer_secret};
 use crate::credentials::{Credentials, json_field};
 use crate::domain::{CreditUnit, ExtraCredits, ProviderStatus, QuotaWindow, WindowLabel};
 use crate::providers::{AccountIdentity, FetchFuture, Provider, RefreshPolicy};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Datelike, NaiveDate, TimeZone, Utc};
 use serde_json::Value;
 
 pub const CLAUDE_USAGE_URL: &str = "https://api.anthropic.com/api/oauth/usage";
@@ -102,7 +102,7 @@ fn extra_credits(v: &Value) -> Option<ExtraCredits> {
     })
 }
 
-fn extra_monthly(v: &Value) -> Option<QuotaWindow> {
+fn extra_monthly(v: &Value, now: DateTime<Utc>) -> Option<QuotaWindow> {
     let x = v.get("extra_usage")?;
     if x.get("is_enabled").and_then(|e| e.as_bool()) != Some(true) {
         return None;
@@ -112,15 +112,54 @@ fn extra_monthly(v: &Value) -> Option<QuotaWindow> {
         return None;
     }
     let used = json_f64(&x["used_credits"]).unwrap_or(0.0);
+    let resets = parse_extra_reset(x).unwrap_or_else(|| next_month_start(now));
     Some(QuotaWindow::from_used_percent(
         WindowLabel::Other("mo".into()),
         ((used / limit) * 100.0) as f32,
-        None,
-        None,
+        Some(resets),
+        Some(43_200),
     ))
 }
 
+fn parse_extra_reset(x: &Value) -> Option<DateTime<Utc>> {
+    parse_time(x.get("resets_at"))
+        .or_else(|| parse_time(x.get("reset_date")))
+        .or_else(|| parse_time(x.get("resetsAt")))
+}
+
+fn parse_time(v: Option<&Value>) -> Option<DateTime<Utc>> {
+    let v = v?;
+    if let Some(s) = v.as_str() {
+        let s = s.trim();
+        if let Ok(d) = DateTime::parse_from_rfc3339(s) {
+            return Some(d.with_timezone(&Utc));
+        }
+        if s.len() >= 10 {
+            if let Ok(day) = NaiveDate::parse_from_str(&s[..10], "%Y-%m-%d") {
+                let n = day.and_hms_opt(0, 0, 0)?;
+                return Some(Utc.from_utc_datetime(&n));
+            }
+        }
+    }
+    let n = v.as_i64().or_else(|| v.as_u64().map(|x| x as i64))?;
+    let secs = if n > 10_000_000_000 { n / 1000 } else { n };
+    DateTime::from_timestamp(secs, 0)
+}
+
+fn next_month_start(now: DateTime<Utc>) -> DateTime<Utc> {
+    let y = now.year();
+    let m = now.month();
+    let (y, m) = if m == 12 { (y + 1, 1) } else { (y, m + 1) };
+    Utc.with_ymd_and_hms(y, m, 1, 0, 0, 0)
+        .single()
+        .unwrap_or(now)
+}
+
 pub fn map_claude_usage(v: &Value) -> ProviderStatus {
+    map_claude_usage_at(v, Utc::now())
+}
+
+pub fn map_claude_usage_at(v: &Value, now: DateTime<Utc>) -> ProviderStatus {
     let v = v.get("usage").unwrap_or(v);
     let mut windows = Vec::new();
     if let Some(fh) = v.get("five_hour") {
@@ -135,7 +174,7 @@ pub fn map_claude_usage(v: &Value) -> ProviderStatus {
     }
     let extra_only = windows.is_empty();
     if extra_only {
-        if let Some(w) = extra_monthly(v) {
+        if let Some(w) = extra_monthly(v, now) {
             windows.push(w);
         }
     }

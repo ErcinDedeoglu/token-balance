@@ -104,8 +104,8 @@ async fn mixed_snapshots_four_sizes() {
         if w >= 80 && w < 140 {
             let two_col = buf
                 .lines()
-                .any(|l| l.contains('┌') && l.contains("Codex") && l.contains("Grok"));
-            assert!(two_col, "2-col row Codex|Grok missing at ({w},{h}):\n{buf}");
+                .any(|l| l.contains('┌') && l.contains("Codex") && l.contains("Kimi"));
+            assert!(two_col, "2-col row Codex|Kimi missing at ({w},{h}):\n{buf}");
         }
         let codex_at = buf
             .lines()
@@ -170,7 +170,7 @@ async fn two_col_j_from_codex_selects_claude() {
     show_cards(&mut app);
     app.selected_id = Some("codex".into());
     app.handle_key(KeyCode::Char('j'));
-    assert_eq!(app.selected_id.as_deref(), Some("claude"));
+    assert_eq!(app.selected_id.as_deref(), Some("grok"));
 }
 
 #[tokio::test]

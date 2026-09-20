@@ -126,6 +126,25 @@ fn not_configured_clears_bars() {
 }
 
 #[test]
+fn soonest_reset_is_min_timestamp() {
+    let now = frozen().now();
+    let a = QuotaWindow::from_remaining_percent(
+        WindowLabel::FiveHour,
+        50.0,
+        Some(now + chrono::Duration::hours(4)),
+        Some(300),
+    );
+    let b = QuotaWindow::from_remaining_percent(
+        WindowLabel::Weekly,
+        40.0,
+        Some(now + chrono::Duration::hours(2)),
+        Some(10080),
+    );
+    let want = b.resets_at;
+    assert_eq!(soonest_reset(&[a, b]), want);
+}
+
+#[test]
 fn risk_sort_codex_18_above_kimi_55() {
     let codex = available(
         "codex",
@@ -168,6 +187,84 @@ fn stale_danger_sorts_with_available() {
     let mut snaps = vec![kimi, codex];
     sort_snapshots(&mut snaps, SortMode::Risk);
     assert_eq!(snaps[0].id, "codex");
+}
+
+#[test]
+fn risk_sort_session_then_weekly_then_monthly() {
+    let now = frozen().now();
+    let session = available(
+        "muse",
+        "muse",
+        vec![QuotaWindow::from_remaining_percent(
+            WindowLabel::FiveHour,
+            0.0,
+            Some(now + chrono::Duration::hours(14)),
+            Some(300),
+        )],
+    );
+    let weekly = available(
+        "kimi",
+        "kimi",
+        vec![
+            QuotaWindow::from_remaining_percent(
+                WindowLabel::FiveHour,
+                100.0,
+                Some(now + chrono::Duration::hours(2)),
+                Some(300),
+            ),
+            QuotaWindow::from_remaining_percent(
+                WindowLabel::Weekly,
+                80.0,
+                Some(now + chrono::Duration::days(1)),
+                Some(10080),
+            ),
+        ],
+    );
+    let monthly = available(
+        "claude",
+        "claude",
+        vec![QuotaWindow::from_remaining_percent(
+            WindowLabel::Other("mo".into()),
+            10.0,
+            Some(now + chrono::Duration::days(11)),
+            Some(43200),
+        )],
+    );
+    let mut snaps = vec![monthly, weekly, session];
+    sort_snapshots(&mut snaps, SortMode::Risk);
+    assert_eq!(
+        snaps.iter().map(|s| s.id.as_str()).collect::<Vec<_>>(),
+        vec!["muse", "kimi", "claude"]
+    );
+}
+
+#[test]
+fn risk_sort_monthly_sooner_reset_first() {
+    let now = frozen().now();
+    let later = available(
+        "copilot",
+        "copilot",
+        vec![QuotaWindow::from_remaining_percent(
+            WindowLabel::Other("mo".into()),
+            93.0,
+            Some(now + chrono::Duration::days(12)),
+            None,
+        )],
+    );
+    let sooner = available(
+        "claude",
+        "claude",
+        vec![QuotaWindow::from_remaining_percent(
+            WindowLabel::Other("mo".into()),
+            10.0,
+            Some(now + chrono::Duration::days(10)),
+            None,
+        )],
+    );
+    let mut snaps = vec![later, sooner];
+    sort_snapshots(&mut snaps, SortMode::Risk);
+    assert_eq!(snaps[0].id, "claude");
+    assert_eq!(snaps[1].id, "copilot");
 }
 
 #[test]
