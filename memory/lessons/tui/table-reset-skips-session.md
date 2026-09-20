@@ -13,7 +13,7 @@ The table reset column followed `constraint_window` (lowest remaining % of any w
 
 ## Decision
 
-Reset paints `calendar_reset_window`: lowest remaining among non-session windows (weekly, then monthly/Other). No weekly and no monthly → em dash. Prepaid stays `no reset`. Risk sort still uses `constraint_window` including session.
+Reset paints `calendar_reset_window`: lowest remaining among non-session windows (weekly or monthly/Other). No weekly and no monthly → em dash. Prepaid stays `no reset`. Risk sort uses that same window’s `resets_at` (soonest first), not 5h class.
 
 ## Reasoning
 

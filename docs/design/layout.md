@@ -37,7 +37,7 @@ The **default scan surface** is a remaining comparison table (`t view:table`): o
    - `k` / `↑`: `i - cols` if that index exists; else no-op.
    Wrap is **off**. After any move, scroll so the selection’s **card-row** is in view. Store selected `id`, not index, so a re-sort does not jump focus.
 
-   Mixed 2-col (`cols = 2`): Codex | Grok / Claude | Kimi / z.ai | Muse. From `codex`, `l` → `grok`, `j` → `claude` (not Grok). 1-col: `j`/`k` are ±1; `h`/`l` are no-ops.
+   Mixed 2-col (`cols = 2`): Grok | Codex / Claude | Kimi / z.ai | Muse (weekly/monthly reset order). From `grok`, `l` → `codex`, `j` → `claude`. From `codex`, `j` → `kimi`. 1-col: `j`/`k` are ±1; `h`/`l` are no-ops.
 
    Enter or Space opens a **detail overlay** (not a second page). Overlay: reset timestamps, raw windows (used **and** remaining), error text, docs URL. While an overlay is open, **movement keys are swallowed**. Overlay closes on `Esc`, `q`, or `Enter`. **Space does not close**. `q`/`Esc` on the board (no overlay) quit.
 7. **Footer (exactly one row):** always the key hints `r refresh   o sort:risk   t view:table   ? help   q quit` (or `t view:cards`). When the viewport does not show every row (`visible_end < n`), **prefix** the pager: `1–3 / 6   r refresh   o sort:risk   t view:table   ? help   q quit`. Full boards **omit** the pager — keys only. The pager never replaces the keys and never wraps to a second footer row. The key row sits under the grid (not stranded at the bottom of a tall terminal).
@@ -82,13 +82,13 @@ Grok SuperGrok often has weekly + extra credits and **no** session window. Hero 
 | Card secondary | Weekly if not hero, else next-shortest session-class |
 | Sort key | `min(remaining_percent)` among snapshots that have windows, then soonest reset |
 
-Claude 5h 72% / weekly 41%: header may say `Claude 41%`; card hero is **72%** (session fuel). Codex 18% still leads sort.
+Claude 5h 72% / weekly 41%: header may say `Claude 41%`; card hero is **72%** (session fuel). Header **worst** is still min remaining (Codex 18%). Default sort is weekly/monthly reset time, so mixed `--fixture` leads with Grok (`3d 4h`), not Codex.
 
 ## Risk sort
 
 Available and Error-with-stale are **one** remaining-sort group. A stale danger card is still on fire.
 
-1. Group 0: has windows (`Available` **or** `Error` with stale Available). **Usable remaining first** (any window remaining > 0 or extra > 0), then exhausted 0% plans, then prepaid. Among usable: **constraining window** (lowest remaining): session-class, then weekly, then monthly. Inside a class, that window’s `resets_at` (soonest first; missing last), then its remaining %, then `id`. Table **reset** column shows weekly or monthly countdown (lowest remaining among those windows), never the 5h/session clock. Exhausted accounts (all windows 0% and no extra) sink so the list is “what I can still spend before reset.”
+1. Group 0: has windows (`Available` **or** `Error` with stale Available). **Usable remaining first** (any window remaining > 0 or extra > 0), then exhausted 0% plans, then prepaid. Among usable: **weekly/monthly reset** (`calendar_reset_window` `resets_at`, soonest first; missing last), then that window’s remaining %, then `id`. Do not group by 5h vs week vs month, and do not sort on the 5h clock. Table **reset** column is that same countdown. Exhausted accounts (all windows 0% and no extra) sink so the list is “what I can still spend before reset.”
 2. Group 1: `Error` without stale
 3. Group 2: `NotConfigured`
 4. Group 3: `Unsupported`

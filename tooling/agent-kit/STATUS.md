@@ -2,24 +2,23 @@
 
 - result: passed
 - growth: vertical
-- added: 1
-- modified: 9
+- added: 0
+- modified: 8
 - deleted: 0
 - moved: 0
 
 ## added
-- `memory/lessons/tui/table-reset-skips-session.md` b66c6fd1e3856ce4
+- (none)
 
 ## modified
-- `crates/token-balance/src/domain.rs` a6a2e2b75cd2b7a5
-- `crates/token-balance/src/domain_test.rs` 3a28e50da537155a
-- `crates/token-balance/src/table.rs` 1ed0de8af2219792
-- `crates/token-balance/src/table_test.rs` d3b999ab9f38b985
-- `crates/token-balance/src/windows.rs` 8f670e252076d148
-- `docs/design/layout.md` b9d69ec2dc01b531
-- `memory/MEMORY.md` 94c098838f9bb797
-- `memory/daily/2026-09-20.md` 9db1bcedd8a63eff
-- `quality/cohesion-reviews.json` ae5042be5fd322a4
+- `crates/token-balance/src/domain_test.rs` 5d3b938cc49af81a
+- `crates/token-balance/src/table_test.rs` c40256e37e73eb49
+- `crates/token-balance/src/tui_test.rs` 509f7eadbb2ce34d
+- `crates/token-balance/src/windows.rs` 62311d3990bff26b
+- `docs/design/layout.md` 46adbd16d556255e
+- `memory/daily/2026-09-20.md` a21c4639a1c1c900
+- `memory/lessons/tui/table-reset-skips-session.md` e5600489b7728317
+- `quality/cohesion-reviews.json` efc75b66c4a3a193
 
 ## moved
 - (none)

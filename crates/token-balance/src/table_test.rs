@@ -199,6 +199,14 @@ async fn table_default_mixed_80x24() {
     assert!(kimi.contains("88%"), "kimi wk:\n{kimi}");
     assert!(kimi.contains("6d 1h"), "kimi weekly reset:\n{kimi}");
     assert!(!kimi.contains("3h 40m"), "must not show 5h clock:\n{kimi}");
+    let at = |n: &str| {
+        buf.lines()
+            .position(|l| l.contains(n) && !l.contains('┌') && !l.contains("worst"))
+            .unwrap_or_else(|| panic!("missing {n}\n{buf}"))
+    };
+    assert!(at("Grok") < at("Codex"), "sooner weekly first:\n{buf}");
+    assert!(at("Codex") < at("Claude"), "reset order:\n{buf}");
+    assert!(at("Claude") < at("Kimi"), "later weekly last:\n{buf}");
 }
 
 #[tokio::test]
@@ -241,8 +249,8 @@ async fn table_toggle_restores_seven_row_cards() {
     }
     let two_col = cards
         .lines()
-        .any(|l| l.contains('┌') && l.contains("Codex") && l.contains("Kimi"));
-    assert!(two_col, "2-col Codex|Kimi missing:\n{cards}");
+        .any(|l| l.contains('┌') && l.contains("Grok") && l.contains("Codex"));
+    assert!(two_col, "2-col Grok|Codex missing:\n{cards}");
     let foot = last_line(&cards);
     assert!(
         foot.contains("t view:cards"),

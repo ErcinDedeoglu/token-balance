@@ -118,19 +118,8 @@ pub fn soonest_reset(windows: &[QuotaWindow]) -> Option<DateTime<Utc>> {
     windows.iter().filter_map(|w| w.resets_at).min()
 }
 
-pub fn constraint_window(windows: &[QuotaWindow]) -> Option<&QuotaWindow> {
-    lowest_remaining(windows.iter())
-}
-
 pub fn calendar_reset_window(windows: &[QuotaWindow]) -> Option<&QuotaWindow> {
-    lowest_remaining(windows.iter().filter(|w| !w.is_session()))
-}
-
-fn lowest_remaining<'a, I>(windows: I) -> Option<&'a QuotaWindow>
-where
-    I: Iterator<Item = &'a QuotaWindow>,
-{
-    windows.min_by(|a, b| {
+    windows.iter().filter(|w| !w.is_session()).min_by(|a, b| {
         a.remaining_percent
             .partial_cmp(&b.remaining_percent)
             .unwrap_or(std::cmp::Ordering::Equal)
@@ -138,13 +127,12 @@ where
     })
 }
 
-fn constraint_class(w: &QuotaWindow) -> u8 {
-    if w.is_session() {
-        0
-    } else if matches!(w.label, WindowLabel::Weekly) {
-        1
-    } else {
-        2
+fn cmp_calendar_reset(a: Option<DateTime<Utc>>, b: Option<DateTime<Utc>>) -> std::cmp::Ordering {
+    match (a, b) {
+        (Some(x), Some(y)) => x.cmp(&y),
+        (Some(_), None) => std::cmp::Ordering::Less,
+        (None, Some(_)) => std::cmp::Ordering::Greater,
+        (None, None) => std::cmp::Ordering::Equal,
     }
 }
 
@@ -176,17 +164,9 @@ pub fn sort_snapshots(snaps: &mut [ProviderSnapshot], mode: SortMode) {
                 let wb = effective_available(&b.status)
                     .map(|r| r.windows)
                     .unwrap_or(&[]);
-                let ca = constraint_window(wa);
-                let cb = constraint_window(wb);
-                let class_a = ca.map(constraint_class).unwrap_or(3);
-                let class_b = cb.map(constraint_class).unwrap_or(3);
-                class_a.cmp(&class_b).then_with(|| {
-                    match (ca.and_then(|w| w.resets_at), cb.and_then(|w| w.resets_at)) {
-                        (Some(x), Some(y)) => x.cmp(&y),
-                        (Some(_), None) => std::cmp::Ordering::Less,
-                        (None, Some(_)) => std::cmp::Ordering::Greater,
-                        (None, None) => std::cmp::Ordering::Equal,
-                    }
+                let ca = calendar_reset_window(wa);
+                let cb = calendar_reset_window(wb);
+                cmp_calendar_reset(ca.and_then(|w| w.resets_at), cb.and_then(|w| w.resets_at))
                     .then_with(|| {
                         let ra = ca.map(|w| w.remaining_percent).unwrap_or(100.0);
                         let rb = cb.map(|w| w.remaining_percent).unwrap_or(100.0);
@@ -194,7 +174,6 @@ pub fn sort_snapshots(snaps: &mut [ProviderSnapshot], mode: SortMode) {
                             .unwrap_or(std::cmp::Ordering::Equal)
                             .then_with(|| a.id.cmp(&b.id))
                     })
-                })
             })
         })
     });

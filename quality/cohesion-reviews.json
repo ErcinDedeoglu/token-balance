@@ -43,7 +43,7 @@
     {
       "path": "crates/token-balance/src/table_test.rs",
       "class": "test",
-      "sha256": "d3b999ab9f38b9857411596c339ae7eb3d1dddafc322e0b85ae82c39b8f0ea6a",
+      "sha256": "c40256e37e73eb4901f353c762eb39d9ced72f5e8dcd404b4bc68971a6b5049d",
       "concern": "table App.draw oracles",
       "rationale": "These tests drive one App.draw path for packed columns, monthly remaining, prepaid section, empty/unsigned rows, selected-row highlight, and the t card toggle. Splitting would duplicate mixed_app bootstrap and hide column-alignment regressions.",
       "kind": "keep-cohesive"
@@ -51,7 +51,7 @@
     {
       "path": "crates/token-balance/src/tui_test.rs",
       "class": "test",
-      "sha256": "8b4571e048d0879548781b9e65f1da0c094d55c1c5dbaa56447fdb280327be17",
+      "sha256": "509f7eadbb2ce34d7c43349447bb3eddad09e1b5343f02c2cead156a69a48374",
       "concern": "board App interaction tests",
       "rationale": "These tests drive one App through keys, mouse, overlays, live-config reload, and error backoff retry. Splitting would duplicate mixed_app bootstrap and hide selection regressions.",
       "kind": "keep-cohesive"

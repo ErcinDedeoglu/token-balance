@@ -3,8 +3,8 @@ use crate::adapters::live_registry;
 use crate::credentials::Credentials;
 use crate::domain::{Clock, ProviderStatus};
 use crate::fixtures::{FixtureSet, fixture_registry, frozen_demo_clock};
-use crate::providers::RefreshTrigger;
 use crate::overlay::Overlay;
+use crate::providers::RefreshTrigger;
 use crossterm::event::{KeyCode, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
@@ -104,8 +104,8 @@ async fn mixed_snapshots_four_sizes() {
         if w >= 80 && w < 140 {
             let two_col = buf
                 .lines()
-                .any(|l| l.contains('┌') && l.contains("Codex") && l.contains("Kimi"));
-            assert!(two_col, "2-col row Codex|Kimi missing at ({w},{h}):\n{buf}");
+                .any(|l| l.contains('┌') && l.contains("Grok") && l.contains("Codex"));
+            assert!(two_col, "2-col row Grok|Codex missing at ({w},{h}):\n{buf}");
         }
         let codex_at = buf
             .lines()
@@ -153,7 +153,10 @@ async fn dump_board_snapshots() {
     }
     let mut app = mixed_app().await;
     let board = render_string(&mut app, 90, 24);
-    assert!(!board.contains("https://"), "docs URL leaked onto the board:\n{board}");
+    assert!(
+        !board.contains("https://"),
+        "docs URL leaked onto the board:\n{board}"
+    );
     app.selected_id = Some("muse".into());
     app.handle_key(KeyCode::Enter);
     let overlay = render_string(&mut app, 90, 24);
@@ -164,13 +167,13 @@ async fn dump_board_snapshots() {
 }
 
 #[tokio::test]
-async fn two_col_j_from_codex_selects_claude() {
+async fn two_col_j_from_codex_selects_kimi() {
     let mut app = mixed_app().await;
     let _ = render_string(&mut app, 120, 24);
     show_cards(&mut app);
     app.selected_id = Some("codex".into());
     app.handle_key(KeyCode::Char('j'));
-    assert_eq!(app.selected_id.as_deref(), Some("grok"));
+    assert_eq!(app.selected_id.as_deref(), Some("kimi"));
 }
 
 #[tokio::test]
@@ -199,13 +202,15 @@ async fn click_selects_card_like_arrows() {
     let _ = render_string(&mut app, 80, 24);
     show_cards(&mut app);
     let _ = render_string(&mut app, 80, 24);
-    let start = app.selected_id.clone();
-    app.handle_mouse(click(60, 3));
-    let after = app.selected_id.clone();
-    assert!(after.is_some());
-    assert_ne!(after, start, "click on right column should change selection");
     app.handle_mouse(click(4, 3));
-    assert_eq!(app.selected_id, start);
+    let left = app.selected_id.clone();
+    app.handle_mouse(click(60, 3));
+    let right = app.selected_id.clone();
+    assert!(left.is_some() && right.is_some());
+    assert_ne!(
+        left, right,
+        "left and right cards must select different accounts"
+    );
 }
 
 #[tokio::test]
@@ -275,7 +280,12 @@ async fn live_app(home: PathBuf) -> App {
     live_app_rx(home).await.0
 }
 
-async fn live_app_rx(home: PathBuf) -> (App, tokio::sync::mpsc::UnboundedReceiver<(String, ProviderStatus)>) {
+async fn live_app_rx(
+    home: PathBuf,
+) -> (
+    App,
+    tokio::sync::mpsc::UnboundedReceiver<(String, ProviderStatus)>,
+) {
     let clock: Arc<dyn Clock> = Arc::new(frozen_demo_clock());
     let creds = Credentials::isolated(home, BTreeMap::new());
     let providers = live_registry(&creds, false).unwrap();
@@ -449,9 +459,11 @@ async fn timer_retries_error_only_after_backoff() {
         },
     );
     app.start_refresh(RefreshTrigger::Timer);
-    assert_eq!(app.in_flight, 0, "frozen clock must not retry before backoff");
-    app.retry_at
-        .insert("codex".into(), app.clock.now());
+    assert_eq!(
+        app.in_flight, 0,
+        "frozen clock must not retry before backoff"
+    );
+    app.retry_at.insert("codex".into(), app.clock.now());
     app.start_refresh(RefreshTrigger::Timer);
     assert!(app.in_flight > 0, "due retry must spawn");
     app.drain_fetches(&mut rx).await;
