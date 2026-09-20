@@ -11,10 +11,10 @@
 - (none)
 
 ## modified
-- `crates/token-balance/src/domain_test.rs` 2b1a93f1ca313921
-- `crates/token-balance/src/windows.rs` 551ddc848e3e58ab
-- `docs/design/layout.md` a9179b5feba76e79
-- `memory/daily/2026-09-20.md` 47d31b8bb5266a07
+- `crates/token-balance/src/table.rs` 2aa124ec81f23696
+- `crates/token-balance/src/table_test.rs` 2a4bf667633fe983
+- `memory/daily/2026-09-20.md` 816293633588bb2c
+- `quality/cohesion-reviews.json` 4cde30843aca23c5
 
 ## moved
 - (none)

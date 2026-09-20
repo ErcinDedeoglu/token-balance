@@ -167,6 +167,25 @@ async fn table_default_mixed_80x24() {
 }
 
 #[tokio::test]
+async fn table_selected_row_spans_side_bars() {
+    let mut app = mixed_app().await;
+    app.selected_id = Some("grok".into());
+    let buf = render_string(&mut app, 120, 24);
+    let grok = named_line(&buf, "Grok");
+    let first = grok.find('│').expect("left bar");
+    let last = grok.rfind('│').expect("right bar");
+    assert!(
+        last > first + 20,
+        "bars must span the record left to right:\n{grok}"
+    );
+    let kimi = named_line(&buf, "Kimi");
+    assert!(
+        !kimi.contains('│'),
+        "unselected row must not have bars:\n{kimi}"
+    );
+}
+
+#[tokio::test]
 async fn table_toggle_restores_seven_row_cards() {
     let mut app = mixed_app().await;
     let table = render_string(&mut app, 80, 24);

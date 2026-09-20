@@ -159,6 +159,20 @@ fn paint_row(
         }
         _ => paint_unsigned_cells(frame, &cells[1..], snap, theme),
     }
+    if selected {
+        paint_row_bars(frame, area, theme);
+    }
+}
+
+fn paint_row_bars(frame: &mut Frame<'_>, area: Rect, theme: Theme) {
+    if area.width < 2 {
+        return;
+    }
+    let bar = Style::default().fg(theme.border_selected);
+    let y = area.y;
+    frame.render_widget(Paragraph::new("│").style(bar), Rect { x: area.x, y, width: 1, height: 1 });
+    let x = area.x.saturating_add(area.width.saturating_sub(1));
+    frame.render_widget(Paragraph::new("│").style(bar), Rect { x, y, width: 1, height: 1 });
 }
 
 fn paint_plan_cells(
@@ -172,10 +186,7 @@ fn paint_plan_cells(
     pct_cell(frame, cells[0], session_window(windows), theme);
     pct_cell(frame, cells[1], weekly_window(windows), theme);
     pct_cell(frame, cells[2], monthly_window(windows), theme);
-    let cd = format_countdown(
-        now,
-        constraint_window(windows).and_then(|w| w.resets_at),
-    );
+    let cd = format_countdown(now, constraint_window(windows).and_then(|w| w.resets_at));
     let reset = if cd.is_empty() { "—".into() } else { cd };
     frame.render_widget(
         Paragraph::new(clip(&reset, cells[3].width as usize)).style(Style::default().fg(theme.label)),
