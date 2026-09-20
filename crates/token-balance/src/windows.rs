@@ -47,6 +47,21 @@ pub fn min_remaining(windows: &[QuotaWindow]) -> Option<f32> {
     windows.iter().map(|w| w.remaining_percent).reduce(f32::min)
 }
 
+pub fn session_window(windows: &[QuotaWindow]) -> Option<&QuotaWindow> {
+    let mut sessions: Vec<&QuotaWindow> = windows.iter().filter(|w| w.is_session()).collect();
+    if sessions.is_empty() {
+        return None;
+    }
+    sessions.sort_by_key(|w| session_duration(w));
+    Some(sessions[0])
+}
+
+pub fn weekly_window(windows: &[QuotaWindow]) -> Option<&QuotaWindow> {
+    windows
+        .iter()
+        .find(|w| matches!(w.label, WindowLabel::Weekly))
+}
+
 fn sort_group(status: &ProviderStatus) -> u8 {
     if effective_available(status).is_some() {
         0
@@ -59,7 +74,14 @@ fn sort_group(status: &ProviderStatus) -> u8 {
     }
 }
 
-fn soonest_reset(windows: &[QuotaWindow]) -> Option<DateTime<Utc>> {
+fn prepaid_rank(ledger: crate::domain::LedgerKind) -> u8 {
+    match ledger {
+        crate::domain::LedgerKind::PrepaidWallet => 1,
+        _ => 0,
+    }
+}
+
+pub fn soonest_reset(windows: &[QuotaWindow]) -> Option<DateTime<Utc>> {
     windows.iter().filter_map(|w| w.resets_at).min()
 }
 
@@ -67,34 +89,40 @@ pub fn sort_snapshots(snaps: &mut [ProviderSnapshot], mode: SortMode) {
     snaps.sort_by(|a, b| {
         let ga = sort_group(&a.status);
         let gb = sort_group(&b.status);
+        let pa = prepaid_rank(a.ledger);
+        let pb = prepaid_rank(b.ledger);
         if mode == SortMode::Name {
             let sink_a = ga >= 2;
             let sink_b = gb >= 2;
-            return sink_a
-                .cmp(&sink_b)
-                .then_with(|| ga.cmp(&gb).then(a.display_name.cmp(&b.display_name)));
+            return sink_a.cmp(&sink_b).then_with(|| {
+                ga.cmp(&gb)
+                    .then(pa.cmp(&pb))
+                    .then(a.display_name.cmp(&b.display_name))
+            });
         }
         ga.cmp(&gb).then_with(|| {
-            if ga != 0 {
-                return a.id.cmp(&b.id);
-            }
-            let wa = effective_available(&a.status)
-                .map(|r| r.windows)
-                .unwrap_or(&[]);
-            let wb = effective_available(&b.status)
-                .map(|r| r.windows)
-                .unwrap_or(&[]);
-            let ra = min_remaining(wa).unwrap_or(100.0);
-            let rb = min_remaining(wb).unwrap_or(100.0);
-            ra.partial_cmp(&rb)
-                .unwrap_or(std::cmp::Ordering::Equal)
-                .then_with(|| match (soonest_reset(wa), soonest_reset(wb)) {
-                    (Some(x), Some(y)) => x.cmp(&y),
-                    (Some(_), None) => std::cmp::Ordering::Less,
-                    (None, Some(_)) => std::cmp::Ordering::Greater,
-                    (None, None) => std::cmp::Ordering::Equal,
-                })
-                .then_with(|| a.id.cmp(&b.id))
+            pa.cmp(&pb).then_with(|| {
+                if ga != 0 {
+                    return a.id.cmp(&b.id);
+                }
+                let wa = effective_available(&a.status)
+                    .map(|r| r.windows)
+                    .unwrap_or(&[]);
+                let wb = effective_available(&b.status)
+                    .map(|r| r.windows)
+                    .unwrap_or(&[]);
+                let ra = min_remaining(wa).unwrap_or(100.0);
+                let rb = min_remaining(wb).unwrap_or(100.0);
+                ra.partial_cmp(&rb)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+                    .then_with(|| match (soonest_reset(wa), soonest_reset(wb)) {
+                        (Some(x), Some(y)) => x.cmp(&y),
+                        (Some(_), None) => std::cmp::Ordering::Less,
+                        (None, Some(_)) => std::cmp::Ordering::Greater,
+                        (None, None) => std::cmp::Ordering::Equal,
+                    })
+                    .then_with(|| a.id.cmp(&b.id))
+            })
         })
     });
 }

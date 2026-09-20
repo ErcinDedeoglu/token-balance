@@ -31,7 +31,9 @@
 
 | Option | Pros | Cons | Verdict |
 | --- | --- | --- | --- |
-| **Risk-sorted card grid** | Answers “who dies first” in one glance | Less density than a table; 80×24 needs scroll | **Lock** |
+| **Remaining comparison table as default scan** | Aligns 5h / wk / reset / extra across accounts; works at `MAX_ACCOUNTS` 24 | Less analog-gauge theater than cards | **Lock** (GOAL-SCAN-1). Footer `t view:table`. |
+| Risk-sorted 7-row card grid | Answers “who dies first” as analog fuel | Face % ≠ sort key; prepaid mixes in; 13–24 accounts page | **Optional `t` toggle** (`t view:cards`). No longer the default scan surface. |
+| Auto cards-or-table by account count | Density without a key | Threshold flicker; dual oracles; live N already >6 | Reject |
 | quotas-style TUI + statusline + JSON day one | Broader CLI | Scope explosion; statusline wants a cache daemon-ish fork | Later `--json` / statusline only |
 | OpenUsage kitchen sink (daemon, SQLite, Prometheus, 36 providers) | History, burn rate | Explicitly not this product | Reject |
 | Table of used% | Easy | Hides risk; used-vs-remaining footgun | Reject |

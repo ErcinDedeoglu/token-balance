@@ -11,6 +11,28 @@ pub enum GridMove {
     Down,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScanView {
+    Table,
+    Cards,
+}
+
+impl ScanView {
+    pub fn toggle(self) -> Self {
+        match self {
+            Self::Table => Self::Cards,
+            Self::Cards => Self::Table,
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Table => "table",
+            Self::Cards => "cards",
+        }
+    }
+}
+
 pub fn columns(width: u16) -> u16 {
     if width >= 140 {
         3

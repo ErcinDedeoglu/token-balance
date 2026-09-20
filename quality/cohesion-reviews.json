@@ -27,15 +27,23 @@
     {
       "path": "crates/token-balance/src/tui.rs",
       "class": "source",
-      "sha256": "6f1678d796459e57317bb60ddb9a8b48e986367218ef6206682a28c8a8b25045",
+      "sha256": "19255df8bd698ee64a7bc5bf374b489eaed9da84f1a1a7d8aac044c5e9c68e95",
       "concern": "board App event loop and selection",
       "rationale": "App owns snapshots, selection, overlay, refresh queue, error backoff, and input. Keys, mouse, timer retry, and r-reload all mutate the same selected_id and in-flight set; extracting one handler would split that state.",
       "kind": "keep-cohesive"
     },
     {
+      "path": "crates/token-balance/src/board.rs",
+      "class": "source",
+      "sha256": "26a7dd848669fd2742567437eceac79623403def09a1b55053b7c7f6df262fdf",
+      "concern": "board chrome and table-or-cards dispatch",
+      "rationale": "paint, pack_chrome, hit_at, and footer share ScanView, scroll_row, and snapshot order so table vs cards stay one board; extracting one would desync pager, click, and body height.",
+      "kind": "keep-cohesive"
+    },
+    {
       "path": "crates/token-balance/src/tui_test.rs",
       "class": "test",
-      "sha256": "145d843404d48cdd29fef63745fe134186980c0ed3a079cb2c13eab4df9fac7b",
+      "sha256": "813f84a6f290f97b8dbda133d785f743ebda3977275af7f393cc279039a0e4d6",
       "concern": "board App interaction tests",
       "rationale": "These tests drive one App through keys, mouse, overlays, live-config reload, and error backoff retry. Splitting would duplicate mixed_app bootstrap and hide selection regressions.",
       "kind": "keep-cohesive"

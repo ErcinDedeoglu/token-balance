@@ -30,15 +30,16 @@ pub fn centered(area: Rect, width: u16, height: u16) -> Rect {
 }
 
 pub fn render_help(frame: &mut Frame<'_>, area: Rect, theme: Theme) {
-    let box_area = centered(area, 60, 12);
+    let box_area = centered(area, 60, 13);
     frame.render_widget(Clear, box_area);
     let text = [
         " h/l  arrows       move in row (clamp, no wrap)",
-        " j/k  arrows       move by column count (no wrap)",
+        " j/k  arrows       table: one row; cards: by column count",
         " enter/space       open detail",
         " enter/esc/q       close overlay",
         " r                 refresh all",
         " o                 sort risk | name",
+        " t                 view table | cards",
         " ?                 this help",
         " q / esc           close overlay, else quit",
     ]

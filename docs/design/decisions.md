@@ -12,8 +12,8 @@ Locks. If a later note disagrees with this table, the table wins until a new pro
 | Short alias | **`tb`** second `[[bin]]` on the same `main.rs` from PR1 | `tb` works as soon as the binary exists |
 | Bars | Eighth-block `▏▎▍▌▋▊▉█` + large remaining %; clip to `Rect`; ambiguous width 1 | Claude Code usage-pane pattern; not ratatui `Gauge` |
 | Glyphs | Unique ASCII `L X K G Z M` | Claude/Codex both cannot be `C`; CJK-safe 1-col |
-| Layout | Header + risk-sorted 7-row cards; 1/2/3 cols at 90/140; vertical scroll | Risk board, not warehouse; 80×24 is a window |
-| Card face | 7 rows for every status; at most two window rows; one teal tertiary; dashed unknown bar, never `0%` | Frozen anatomy so adapters cannot force a rewrite |
+| Layout | Default scan surface is the remaining table (`t view:table`); optional 7-row cards via `t` toggle; 1/2/3 cols on the card view at 80/140; vertical scroll | GOAL-SCAN-1: comparison at `MAX_ACCOUNTS` 24; v1 card-grid-only lock reopened |
+| Card face | Optional `t` view: 7 rows for every status; at most two window rows; one teal tertiary; dashed unknown bar, never `0%` | Frozen card anatomy so adapters cannot force a rewrite; not the default scan |
 | Sort | Available **and** Error-with-stale share remaining-sort; then Error; unsigned sinks | Stale danger is still on fire |
 | Hero vs header | Hero = shortest session-class (`duration_mins <= 360`); header `worst` uses min window | Session fuel stays the analog meter; Codex 15m does not lose to weekly |
 | Paint view | `effective_available` → `AvailableRef`; `last_available` → boxed snapshot | `Available` is not a `ProviderSnapshot` |

@@ -1,11 +1,14 @@
 use crate::adapters::live_registry;
-use crate::board::{card_at, paint};
+use crate::board::{hit_at, paint};
 use crate::credentials::Credentials;
 use crate::domain::{
     Clock, ProviderSnapshot, ProviderStatus, SortMode, apply_fetch, sort_snapshots,
 };
 use crate::fixtures::{FixtureSet, mixed_available_snapshots};
-use crate::layout::{GridMove, card_row, clamp_scroll, columns, move_index, visible_card_rows};
+use crate::layout::{
+    GridMove, ScanView, card_row, clamp_scroll, columns, move_index, visible_card_rows,
+};
+use crate::table::visible_table_rows;
 use crate::overlay::Overlay;
 use crate::providers::{
     Provider, RefreshTrigger, allows_refresh, error_backoff, refresh_period,
@@ -24,6 +27,7 @@ pub struct App {
     pub selected_id: Option<String>,
     pub overlay: Overlay,
     pub sort: SortMode,
+    pub view: ScanView,
     pub fetching: bool,
     pub refresh_queued: bool,
     pub scroll_row: u16,
@@ -59,6 +63,7 @@ impl App {
             selected_id,
             overlay: Overlay::None,
             sort: SortMode::Risk,
+            view: ScanView::Table,
             fetching: false,
             refresh_queued: false,
             scroll_row: 0,
@@ -277,6 +282,10 @@ impl App {
                 };
                 sort_snapshots(&mut self.snapshots, self.sort);
             }
+            KeyCode::Char('t') => {
+                self.view = self.view.toggle();
+                self.sync_scroll();
+            }
             KeyCode::Char('?') => self.overlay = Overlay::Help,
             KeyCode::Enter | KeyCode::Char(' ') => self.overlay = Overlay::Detail,
             KeyCode::Char('h') | KeyCode::Left => self.move_sel(GridMove::Left),
@@ -295,12 +304,13 @@ impl App {
             self.overlay = Overlay::None;
             return;
         }
-        if let Some(id) = card_at(
+        if let Some(id) = hit_at(
             ev.column,
             ev.row,
             self.last_area,
             &self.snapshots,
             self.scroll_row,
+            self.view,
         ) {
             self.selected_id = Some(id);
             self.sync_scroll();
@@ -312,7 +322,10 @@ impl App {
         if n == 0 {
             return;
         }
-        let cols = columns(self.last_area.width) as usize;
+        let cols = match self.view {
+            ScanView::Table => 1,
+            ScanView::Cards => columns(self.last_area.width) as usize,
+        };
         let i = self
             .selected_id
             .as_ref()
@@ -324,25 +337,29 @@ impl App {
     }
 
     fn sync_scroll(&mut self) {
-        let cols = columns(self.last_area.width);
-        let vis = visible_card_rows(self.last_area.height, self.last_area.width);
         let n = self.snapshots.len();
         let i = self
             .selected_id
             .as_ref()
             .and_then(|id| self.snapshots.iter().position(|s| &s.id == id))
             .unwrap_or(0);
-        let total_rows = if cols == 0 {
-            0
-        } else {
-            ((n as u16) + cols - 1) / cols
+        let (vis, total_rows, selected_row) = match self.view {
+            ScanView::Table => {
+                let vis = visible_table_rows(self.last_area.height, self.last_area.width);
+                (vis, n as u16, i as u16)
+            }
+            ScanView::Cards => {
+                let cols = columns(self.last_area.width);
+                let vis = visible_card_rows(self.last_area.height, self.last_area.width);
+                let total_rows = if cols == 0 {
+                    0
+                } else {
+                    ((n as u16) + cols - 1) / cols
+                };
+                (vis, total_rows, card_row(i, cols as usize) as u16)
+            }
         };
-        self.scroll_row = clamp_scroll(
-            self.scroll_row,
-            card_row(i, cols as usize) as u16,
-            vis,
-            total_rows,
-        );
+        self.scroll_row = clamp_scroll(self.scroll_row, selected_row, vis, total_rows);
     }
 
     pub fn draw(&mut self, frame: &mut Frame<'_>) {
@@ -361,6 +378,7 @@ impl App {
             self.theme,
             self.overlay,
             selected.as_ref(),
+            self.view,
         );
     }
 

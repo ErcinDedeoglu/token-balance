@@ -10,6 +10,7 @@ mod fixture_board;
 mod fixtures;
 mod layout;
 mod overlay;
+mod table;
 mod providers;
 mod theme;
 mod tui;

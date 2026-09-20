@@ -34,6 +34,10 @@ async fn mixed_app() -> App {
     app.bootstrap(&mut rx).await
 }
 
+fn show_cards(app: &mut App) {
+    app.handle_key(KeyCode::Char('t'));
+}
+
 fn card_block(buf: &str, needle: &str) -> String {
     let lines: Vec<&str> = buf.lines().collect();
     let i = lines
@@ -61,6 +65,7 @@ fn last_line(buf: &str) -> &str {
 #[tokio::test]
 async fn mixed_snapshots_four_sizes() {
     let mut app = mixed_app().await;
+    show_cards(&mut app);
     let sizes = [(80u16, 48u16), (80, 24), (120, 24), (140, 24)];
     for (w, h) in sizes {
         let buf = render_string(&mut app, w, h);
@@ -162,6 +167,7 @@ async fn dump_board_snapshots() {
 async fn two_col_j_from_codex_selects_claude() {
     let mut app = mixed_app().await;
     let _ = render_string(&mut app, 120, 24);
+    show_cards(&mut app);
     app.selected_id = Some("codex".into());
     app.handle_key(KeyCode::Char('j'));
     assert_eq!(app.selected_id.as_deref(), Some("claude"));
@@ -190,6 +196,8 @@ fn click(column: u16, row: u16) -> MouseEvent {
 #[tokio::test]
 async fn click_selects_card_like_arrows() {
     let mut app = mixed_app().await;
+    let _ = render_string(&mut app, 80, 24);
+    show_cards(&mut app);
     let _ = render_string(&mut app, 80, 24);
     let start = app.selected_id.clone();
     app.handle_mouse(click(60, 3));
@@ -232,6 +240,7 @@ async fn error_fixture_first_paint_stale_codex_bars() {
     let providers = fixture_registry(FixtureSet::Error, Arc::clone(&clock));
     let (app, mut rx) = App::new(providers, clock, Some(FixtureSet::Error));
     let mut app = app.bootstrap(&mut rx).await;
+    show_cards(&mut app);
     let buf = render_string(&mut app, 80, 48);
     let card = card_block(&buf, "Codex");
     assert!(card.contains("18%"), "stale bars:\n{card}");
@@ -306,6 +315,7 @@ credentials = ".missing-b.json"
 "#,
     );
     let mut app = live_app(home).await;
+    show_cards(&mut app);
     let buf = render_string(&mut app, 80, 24);
     let work = card_block(&buf, "work");
     let home_card = card_block(&buf, "home");
@@ -377,6 +387,7 @@ async fn fixture_multi_80x24_pager_and_seven_row_cards() {
     assert!(providers.len() > 6);
     let (app, mut rx) = App::new(providers, clock, Some(FixtureSet::Multi));
     let mut app = app.bootstrap(&mut rx).await;
+    show_cards(&mut app);
     let buf = render_string(&mut app, 80, 24);
     let two_col = buf
         .lines()

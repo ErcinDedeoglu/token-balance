@@ -4,10 +4,11 @@ use crate::domain::{
     min_remaining,
 };
 use crate::layout::{
-    CARD_ROWS, card_row_areas, clip, columns, padded_inner, pager_prefix, visible_card_rows,
-    visible_index_range,
+    CARD_ROWS, ScanView, card_row_areas, clip, columns, padded_inner, pager_prefix,
+    visible_card_rows, visible_index_range,
 };
 use crate::overlay::{Overlay, render_detail, render_help};
+use crate::table::{footer_keys, paint_table, table_at, table_pager, visible_table_rows};
 use crate::theme::Theme;
 use chrono::{DateTime, Utc};
 use ratatui::Frame;
@@ -28,25 +29,52 @@ pub fn paint(
     theme: Theme,
     overlay: Overlay,
     selected: Option<&ProviderSnapshot>,
+    view: ScanView,
 ) {
     let area = frame.area();
     frame.render_widget(
         ratatui::widgets::Block::default().style(Style::default().bg(theme.bg)),
         area,
     );
-    let (header, body, footer) = pack_chrome(area, snapshots.len(), scroll_row);
+    let (header, body, footer) = pack_chrome(area, snapshots.len(), scroll_row, view);
     draw_header(frame, header, snapshots, last_refresh, now, fetching, theme);
-    draw_grid(
-        frame,
-        body,
-        snapshots,
-        selected_id,
-        scroll_row,
-        now,
-        theme,
-        area.width,
-        area.height,
-    );
+    if snapshots.is_empty() {
+        draw_grid(
+            frame,
+            body,
+            snapshots,
+            selected_id,
+            scroll_row,
+            now,
+            theme,
+            area.width,
+            area.height,
+        );
+    } else if view == ScanView::Table {
+        paint_table(
+            frame,
+            body,
+            snapshots,
+            selected_id,
+            now,
+            theme,
+            scroll_row,
+            area.width,
+            area.height,
+        );
+    } else {
+        draw_grid(
+            frame,
+            body,
+            snapshots,
+            selected_id,
+            scroll_row,
+            now,
+            theme,
+            area.width,
+            area.height,
+        );
+    }
     draw_footer(
         frame,
         footer,
@@ -56,6 +84,7 @@ pub fn paint(
         area.width,
         area.height,
         theme,
+        view,
     );
     match overlay {
         Overlay::None => {}
@@ -68,18 +97,25 @@ pub fn paint(
     }
 }
 
-fn pack_chrome(area: Rect, n: usize, scroll_row: u16) -> (Rect, Rect, Rect) {
+fn pack_chrome(area: Rect, n: usize, scroll_row: u16, view: ScanView) -> (Rect, Rect, Rect) {
     let hh = crate::layout::header_height(area.width);
-    let cols = columns(area.width);
-    let vis = visible_card_rows(area.height, area.width);
-    let (start, end) = visible_index_range(scroll_row, vis, cols, n);
-    let shown = end.saturating_sub(start);
-    let rows = if cols == 0 {
-        0
+    let grid_h = if view == ScanView::Table && n > 0 {
+        let vis = visible_table_rows(area.height, area.width);
+        let (start, end) = visible_index_range(scroll_row, vis, 1, n);
+        let shown = end.saturating_sub(start) as u16;
+        shown.saturating_add(crate::table::TABLE_COL_HEADER)
     } else {
-        ((shown as u16) + cols - 1) / cols
+        let cols = columns(area.width);
+        let vis = visible_card_rows(area.height, area.width);
+        let (start, end) = visible_index_range(scroll_row, vis, cols, n);
+        let shown = end.saturating_sub(start);
+        let rows = if cols == 0 {
+            0
+        } else {
+            ((shown as u16) + cols - 1) / cols
+        };
+        rows.saturating_mul(CARD_ROWS)
     };
-    let grid_h = rows.saturating_mul(CARD_ROWS);
     let avail = area.height.saturating_sub(hh).saturating_sub(1);
     let body_h = if n == 0 {
         3.min(avail)
@@ -179,17 +215,29 @@ fn draw_grid(
     }
 }
 
-pub fn card_at(
+pub fn hit_at(
     col: u16,
     row: u16,
     area: Rect,
     snapshots: &[ProviderSnapshot],
     scroll_row: u16,
+    view: ScanView,
 ) -> Option<String> {
     if snapshots.is_empty() {
         return None;
     }
-    let (_, body, _) = pack_chrome(area, snapshots.len(), scroll_row);
+    let (_, body, _) = pack_chrome(area, snapshots.len(), scroll_row, view);
+    if view == ScanView::Table {
+        return table_at(
+            col,
+            row,
+            body,
+            snapshots,
+            scroll_row,
+            area.width,
+            area.height,
+        );
+    }
     let cols = columns(area.width);
     let vis = visible_card_rows(area.height, area.width);
     let n = snapshots.len();
@@ -236,17 +284,19 @@ fn draw_footer(
     width: u16,
     height: u16,
     theme: Theme,
+    view: ScanView,
 ) {
-    let cols = columns(width);
-    let vis = visible_card_rows(height, width);
     let n = snapshots.len();
-    let (start, end) = visible_index_range(scroll_row, vis, cols, n);
-    let sort = match sort {
-        SortMode::Risk => "risk",
-        SortMode::Name => "name",
+    let keys = footer_keys(sort, view);
+    let pager = if view == ScanView::Table {
+        table_pager(scroll_row, height, width, n)
+    } else {
+        let cols = columns(width);
+        let vis = visible_card_rows(height, width);
+        let (start, end) = visible_index_range(scroll_row, vis, cols, n);
+        pager_prefix(start, end, n)
     };
-    let keys = format!(" r refresh   o sort:{sort}   ? help   q quit");
-    let text = match pager_prefix(start, end, n) {
+    let text = match pager {
         Some(p) => format!(" {p}  {keys}"),
         None => keys,
     };
