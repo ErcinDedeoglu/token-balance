@@ -33,6 +33,40 @@ impl ScanView {
     }
 }
 
+pub const TABLE_DATA_COLS: u16 = 5 + 5 + 5 + 8 + 12 + 5;
+
+pub fn table_name_width(longest_name: usize, inner: u16) -> u16 {
+    let cap = inner.saturating_sub(TABLE_DATA_COLS).max(1);
+    let n = (longest_name.max(7) as u16).saturating_add(1);
+    n.min(cap).max(1)
+}
+
+pub fn table_row_chunks(area: Rect, name_w: u16) -> Vec<Rect> {
+    if area.width == 0 {
+        return Vec::new();
+    }
+    Layout::horizontal([
+        Constraint::Length(name_w),
+        Constraint::Length(1),
+        Constraint::Length(5),
+        Constraint::Length(1),
+        Constraint::Length(5),
+        Constraint::Length(1),
+        Constraint::Length(5),
+        Constraint::Length(1),
+        Constraint::Length(8),
+        Constraint::Length(1),
+        Constraint::Length(12),
+        Constraint::Fill(1),
+    ])
+    .split(area)
+    .iter()
+    .enumerate()
+    .filter(|(i, _)| i % 2 == 0)
+    .map(|(_, r)| *r)
+    .collect()
+}
+
 pub fn columns(width: u16) -> u16 {
     if width >= 140 {
         3
@@ -205,6 +239,17 @@ mod tests {
         assert_eq!(columns(80), 2);
         assert_eq!(columns(139), 2);
         assert_eq!(columns(140), 3);
+    }
+
+    #[test]
+    fn table_row_packs_5h_one_gutter_after_name() {
+        let area = Rect::new(1, 0, 118, 1);
+        let name_w = table_name_width(8, 118);
+        let cells = table_row_chunks(area, name_w);
+        assert_eq!(cells.len(), 6);
+        assert_eq!(cells[1].x, cells[0].x + cells[0].width + 1);
+        assert_eq!(cells[5].width, 12);
+        assert!(cells[5].x + cells[5].width < area.x + area.width);
     }
 
     #[test]

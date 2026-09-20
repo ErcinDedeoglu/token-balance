@@ -10,6 +10,7 @@ use crossterm::event::KeyCode;
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
 use std::sync::Arc;
+use unicode_width::UnicodeWidthChar;
 
 fn render_string(app: &mut App, width: u16, height: u16) -> String {
     let backend = TestBackend::new(width, height);
@@ -44,6 +45,78 @@ fn named_line<'a>(buf: &'a str, name: &str) -> &'a str {
     buf.lines()
         .find(|l| l.contains(name) && !l.contains('┌') && !l.contains("worst"))
         .unwrap_or_else(|| panic!("missing row {name} in\n{buf}"))
+}
+
+fn header_line(buf: &str) -> &str {
+    buf.lines()
+        .find(|l| l.contains("5h") && l.contains("wk") && l.contains("mo"))
+        .unwrap_or_else(|| panic!("missing packed header in\n{buf}"))
+}
+
+fn col_start(header: &str, label: &str) -> usize {
+    match label {
+        "mo" => {
+            let wk = header.find("wk").expect("wk before mo");
+            wk + 2
+                + header[wk + 2..]
+                    .find("mo")
+                    .expect("mo column after wk")
+        }
+        _ => header
+            .find(label)
+            .unwrap_or_else(|| panic!("{label} in {header}")),
+    }
+}
+
+fn byte_at_col(s: &str, col: usize) -> usize {
+    let mut c = 0usize;
+    for (i, ch) in s.char_indices() {
+        if c >= col {
+            return i;
+        }
+        c += UnicodeWidthChar::width(ch).unwrap_or(0);
+    }
+    s.len()
+}
+
+fn cell<'a>(header: &str, row: &'a str, label: &str) -> &'a str {
+    let start_col = col_start(header, label);
+    let w = match label {
+        "5h" | "wk" | "mo" => 5,
+        "reset" => 8,
+        "extra" => 12,
+        _ => 8,
+    };
+    let a = byte_at_col(row, start_col);
+    let b = byte_at_col(row, start_col + w);
+    row.get(a..b).unwrap_or("").trim()
+}
+
+fn other_plan(
+    id: &str,
+    name: &str,
+    remaining: f32,
+    extra: Option<ExtraCredits>,
+    now: chrono::DateTime<chrono::Utc>,
+) -> ProviderSnapshot {
+    ProviderSnapshot {
+        id: id.into(),
+        display_name: name.into(),
+        glyph: "L".into(),
+        ledger: LedgerKind::PlanRemaining,
+        fetched_at: now,
+        status: ProviderStatus::Available {
+            plan: Some("Max".into()),
+            windows: vec![QuotaWindow::from_remaining_percent(
+                WindowLabel::Other("mo".into()),
+                remaining,
+                None,
+                None,
+            )],
+            extra,
+        },
+        docs_url: None,
+    }
 }
 
 fn card_block(buf: &str, needle: &str) -> String {
@@ -203,6 +276,93 @@ async fn table_shows_session_and_weekly_percent() {
     let row = named_line(&buf, "Kimi");
     assert!(row.contains("100%"), "session remaining:\n{row}\n{buf}");
     assert!(row.contains("80%"), "weekly remaining:\n{row}\n{buf}");
+    let header = header_line(&buf);
+    assert_eq!(cell(header, row, "mo"), "—", "mo dash:\n{row}\n{header}");
+}
+
+#[tokio::test]
+async fn table_pack_columns_120() {
+    let mut app = mixed_app().await;
+    let buf = render_string(&mut app, 120, 24);
+    let header = header_line(&buf);
+    assert!(
+        header.trim_end().ends_with("extra"),
+        "leftover after extra:\n{header:?}"
+    );
+    let row = named_line(&buf, "Codex");
+    let name_end = row.find("Codex").expect("Codex") + 5;
+    let five = row.find("18%").expect("18%");
+    assert!(
+        five <= name_end + 4,
+        "5h must sit next to the name cell (gap {}):\n{row}",
+        five - name_end
+    );
+    assert!(row.contains("63%"), "codex wk:\n{row}");
+    assert!(row.contains("1h 12m"), "codex reset:\n{row}");
+    assert_eq!(cell(header, row, "5h"), "18%");
+    assert_eq!(cell(header, row, "wk"), "63%");
+}
+
+#[tokio::test]
+async fn table_pack_columns_80() {
+    let mut app = mixed_app().await;
+    let buf = render_string(&mut app, 80, 24);
+    let header = header_line(&buf);
+    for label in ["5h", "wk", "mo", "reset", "extra"] {
+        assert!(header.contains(label), "missing {label}:\n{header}");
+    }
+    assert!(
+        header.trim_end().ends_with("extra"),
+        "leftover after extra:\n{header:?}"
+    );
+    let row = named_line(&buf, "Codex");
+    let name_end = row.find("Codex").expect("Codex") + 5;
+    let five = row.find("18%").expect("18%");
+    assert!(
+        five <= name_end + 4,
+        "80-col 5h packed (gap {}):\n{row}",
+        five - name_end
+    );
+}
+
+#[tokio::test]
+async fn table_monthly_percent_and_extra() {
+    let mut app = mixed_app().await;
+    let now = app.snapshots[0].fetched_at;
+    app.snapshots.push(other_plan(
+        "claude-mo",
+        "claude mo",
+        10.0,
+        Some(ExtraCredits {
+            label: "extra usage".into(),
+            remaining: 203.79,
+            unit: CreditUnit::Usd,
+            limit: None,
+        }),
+        now,
+    ));
+    sort_snapshots(&mut app.snapshots, SortMode::Risk);
+    let buf = render_string(&mut app, 120, 24);
+    let header = header_line(&buf);
+    let row = named_line(&buf, "claude mo");
+    assert_eq!(cell(header, row, "5h"), "—", "5h must not hold monthly:\n{row}\n{header}");
+    assert_eq!(cell(header, row, "wk"), "—", "{row}");
+    assert_eq!(cell(header, row, "mo"), "10%", "monthly remaining:\n{row}\n{header}");
+    assert!(row.contains("$203.79"), "extra:\n{row}");
+}
+
+#[tokio::test]
+async fn table_monthly_only_percent() {
+    let mut app = mixed_app().await;
+    let now = app.snapshots[0].fetched_at;
+    app.snapshots.push(other_plan("kiro-mo", "kiro mo", 83.0, None, now));
+    sort_snapshots(&mut app.snapshots, SortMode::Risk);
+    let buf = render_string(&mut app, 120, 24);
+    let header = header_line(&buf);
+    let row = named_line(&buf, "kiro mo");
+    assert_eq!(cell(header, row, "5h"), "—", "not in 5h:\n{row}\n{header}");
+    assert_eq!(cell(header, row, "wk"), "—", "{row}");
+    assert_eq!(cell(header, row, "mo"), "83%", "monthly only:\n{row}\n{header}");
 }
 
 #[tokio::test]
@@ -214,8 +374,8 @@ async fn table_empty_registry_hint() {
         buf.contains("accounts.toml"),
         "empty hint:\n{buf}"
     );
-    let header = buf.lines().any(|l| l.contains("5h") && l.contains("wk"));
-    assert!(!header, "no 5h/wk table header when empty:\n{buf}");
+    let header = buf.lines().any(|l| l.contains("5h") && l.contains("wk") && l.contains("mo"));
+    assert!(!header, "no 5h/wk/mo table header when empty:\n{buf}");
 }
 
 #[tokio::test]

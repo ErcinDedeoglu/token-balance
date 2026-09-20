@@ -62,6 +62,17 @@ pub fn weekly_window(windows: &[QuotaWindow]) -> Option<&QuotaWindow> {
         .find(|w| matches!(w.label, WindowLabel::Weekly))
 }
 
+pub fn monthly_window(windows: &[QuotaWindow]) -> Option<&QuotaWindow> {
+    windows
+        .iter()
+        .filter(|w| !w.is_session() && !matches!(w.label, WindowLabel::Weekly))
+        .min_by(|a, b| {
+            a.remaining_percent
+                .partial_cmp(&b.remaining_percent)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
+}
+
 fn sort_group(status: &ProviderStatus) -> u8 {
     if effective_available(status).is_some() {
         0

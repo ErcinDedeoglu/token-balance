@@ -1,15 +1,17 @@
 use crate::domain::{
     CreditUnit, ExtraCredits, LedgerKind, ProviderSnapshot, ProviderStatus, display_pct,
-    effective_available, extra_line, format_countdown, session_window, soonest_reset,
-    weekly_window,
+    effective_available, extra_line, format_countdown, monthly_window, session_window,
+    soonest_reset, weekly_window,
 };
 use crate::layout::{
-    ScanView, clip, header_height, padded_inner, pager_prefix, visible_index_range,
+    ScanView, clip, header_height, padded_inner, pager_prefix, table_name_width, table_row_chunks,
+    visible_index_range,
 };
+use unicode_width::UnicodeWidthStr;
 use crate::theme::Theme;
 use chrono::{DateTime, Utc};
 use ratatui::Frame;
-use ratatui::layout::{Constraint, Layout, Rect};
+use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::widgets::Paragraph;
 
@@ -56,7 +58,13 @@ pub fn paint_table(
         width: inner.width,
         height: 1.min(inner.height),
     };
-    paint_col_header(frame, header, theme);
+    let longest = snapshots
+        .iter()
+        .map(|s| format!(" {} {}", s.glyph, s.display_name).width())
+        .max()
+        .unwrap_or(7);
+    let name_w = table_name_width(longest, inner.width);
+    paint_col_header(frame, header, theme, name_w);
     let mut y = inner.y.saturating_add(1);
     for i in start..end {
         if y >= inner.y.saturating_add(inner.height) {
@@ -75,6 +83,7 @@ pub fn paint_table(
             selected_id == Some(snapshots[i].id.as_str()),
             theme,
             now,
+            name_w,
         );
         y = y.saturating_add(1);
     }
@@ -102,42 +111,9 @@ pub fn table_at(
     snapshots.get(idx).map(|s| s.id.clone())
 }
 
-fn col_widths(width: u16) -> [u16; 5] {
-    let five = 5u16;
-    let wk = 5u16;
-    let reset = 8u16;
-    let extra = 12u16;
-    let gaps = 4u16;
-    let fixed = five + wk + reset + extra + gaps;
-    let name = width.saturating_sub(fixed).max(1);
-    [name, five, wk, reset, extra]
-}
-
-fn split_row(area: Rect) -> Vec<Rect> {
-    let [name, five, wk, reset, extra] = col_widths(area.width);
-    let constraints = [
-        Constraint::Length(name),
-        Constraint::Length(1),
-        Constraint::Length(five),
-        Constraint::Length(1),
-        Constraint::Length(wk),
-        Constraint::Length(1),
-        Constraint::Length(reset),
-        Constraint::Length(1),
-        Constraint::Length(extra),
-    ];
-    Layout::horizontal(constraints)
-        .split(area)
-        .iter()
-        .enumerate()
-        .filter(|(i, _)| i % 2 == 0)
-        .map(|(_, r)| *r)
-        .collect()
-}
-
-fn paint_col_header(frame: &mut Frame<'_>, area: Rect, theme: Theme) {
-    let cells = split_row(area);
-    let labels = ["account", "5h", "wk", "reset", "extra"];
+fn paint_col_header(frame: &mut Frame<'_>, area: Rect, theme: Theme, name_w: u16) {
+    let cells = table_row_chunks(area, name_w);
+    let labels = ["account", "5h", "wk", "mo", "reset", "extra"];
     let style = Style::default().fg(theme.label);
     for (i, cell) in cells.into_iter().enumerate() {
         let text = labels.get(i).copied().unwrap_or("");
@@ -155,9 +131,10 @@ fn paint_row(
     selected: bool,
     theme: Theme,
     now: DateTime<Utc>,
+    name_w: u16,
 ) {
-    let cells = split_row(area);
-    if cells.len() < 5 {
+    let cells = table_row_chunks(area, name_w);
+    if cells.len() < 6 {
         return;
     }
     let name_style = if selected {
@@ -194,16 +171,17 @@ fn paint_plan_cells(
 ) {
     pct_cell(frame, cells[0], session_window(windows), theme);
     pct_cell(frame, cells[1], weekly_window(windows), theme);
+    pct_cell(frame, cells[2], monthly_window(windows), theme);
     let cd = format_countdown(now, soonest_reset(windows));
     let reset = if cd.is_empty() { "—".into() } else { cd };
     frame.render_widget(
-        Paragraph::new(clip(&reset, cells[2].width as usize)).style(Style::default().fg(theme.label)),
-        cells[2],
+        Paragraph::new(clip(&reset, cells[3].width as usize)).style(Style::default().fg(theme.label)),
+        cells[3],
     );
     let ex = extra.map(compact_extra).unwrap_or_else(|| "—".into());
     frame.render_widget(
-        Paragraph::new(clip(&ex, cells[3].width as usize)).style(Style::default().fg(theme.extra)),
-        cells[3],
+        Paragraph::new(clip(&ex, cells[4].width as usize)).style(Style::default().fg(theme.extra)),
+        cells[4],
     );
 }
 
@@ -216,21 +194,22 @@ fn paint_prepaid_cells(
     let dash = Style::default().fg(theme.dim);
     frame.render_widget(Paragraph::new("—").style(dash), cells[0]);
     frame.render_widget(Paragraph::new("—").style(dash), cells[1]);
+    frame.render_widget(Paragraph::new("—").style(dash), cells[2]);
     frame.render_widget(
         Paragraph::new("no reset").style(Style::default().fg(theme.label)),
-        cells[2],
+        cells[3],
     );
     let amount = effective_available(&snap.status)
         .and_then(|a| a.extra.as_ref())
         .map(compact_extra)
         .unwrap_or_else(|| "—".into());
     frame.render_widget(
-        Paragraph::new(clip(&amount, cells[3].width as usize)).style(
+        Paragraph::new(clip(&amount, cells[4].width as usize)).style(
             Style::default()
                 .fg(theme.extra)
                 .add_modifier(Modifier::BOLD),
         ),
-        cells[3],
+        cells[4],
     );
 }
 
@@ -250,9 +229,10 @@ fn paint_unsigned_cells(
     frame.render_widget(Paragraph::new("—").style(dim), cells[0]);
     frame.render_widget(Paragraph::new("—").style(dim), cells[1]);
     frame.render_widget(Paragraph::new("—").style(dim), cells[2]);
+    frame.render_widget(Paragraph::new("—").style(dim), cells[3]);
     frame.render_widget(
-        Paragraph::new(clip(word, cells[3].width as usize)).style(dim),
-        cells[3],
+        Paragraph::new(clip(word, cells[4].width as usize)).style(dim),
+        cells[4],
     );
 }
 
