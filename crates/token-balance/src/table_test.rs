@@ -357,6 +357,37 @@ async fn table_shows_session_and_weekly_percent() {
 }
 
 #[tokio::test]
+async fn table_session_only_shows_reset() {
+    let mut app = mixed_app().await;
+    let now = app.snapshots[0].fetched_at;
+    let muse = app
+        .snapshots
+        .iter_mut()
+        .find(|s| s.id == "muse")
+        .expect("muse");
+    muse.ledger = LedgerKind::PlanRemaining;
+    muse.status = ProviderStatus::Available {
+        plan: Some("Everyday".into()),
+        windows: vec![QuotaWindow::from_remaining_percent(
+            WindowLabel::FiveHour,
+            0.0,
+            Some(now + Duration::hours(11) + Duration::minutes(43)),
+            Some(300),
+        )],
+        extra: None,
+    };
+    sort_snapshots(&mut app.snapshots, SortMode::Risk);
+    let buf = render_string(&mut app, 80, 24);
+    let row = named_line(&buf, "Muse");
+    let reset = cell(header_line(&buf), row, "reset");
+    assert!(
+        reset.contains("11h"),
+        "session-only Everyday reset:\n{reset:?}\n{row}\n{buf}"
+    );
+    assert!(row.contains("0%"), "muse 5h:\n{row}");
+}
+
+#[tokio::test]
 async fn table_pack_columns_120() {
     let mut app = mixed_app().await;
     let buf = render_string(&mut app, 120, 24);

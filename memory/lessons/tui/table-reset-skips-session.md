@@ -13,7 +13,7 @@ The table reset column followed `constraint_window` (lowest remaining % of any w
 
 ## Decision
 
-Reset paints `calendar_reset_window`: lowest remaining among non-session windows (weekly or monthly/Other). No weekly and no monthly → em dash. Prepaid stays `no reset`. Risk sort uses that same window’s `resets_at` (soonest first), not 5h class.
+Reset paints `table_reset_window`: weekly or monthly (`calendar_reset_window`) when present; session-only plans (Muse Everyday) fall back to the 5h clock. Prepaid stays `no reset`. Risk sort still uses weekly/monthly `resets_at` only, so exhausted Muse stays at the bottom.
 
 ## Reasoning
 

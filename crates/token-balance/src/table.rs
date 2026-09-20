@@ -1,7 +1,7 @@
 use crate::domain::{
-    CreditUnit, ExtraCredits, LedgerKind, ProviderSnapshot, ProviderStatus, calendar_reset_window,
-    display_pct, effective_available, extra_line, format_countdown, monthly_window, session_window,
-    weekly_window,
+    CreditUnit, ExtraCredits, LedgerKind, ProviderSnapshot, ProviderStatus, display_pct,
+    effective_available, extra_line, format_countdown, monthly_window, session_window,
+    table_reset_window, weekly_window,
 };
 use crate::layout::{
     ScanView, clip, header_height, padded_inner, pager_prefix, table_name_width, table_row_chunks,
@@ -182,10 +182,7 @@ fn paint_plan_cells(
     pct_cell(frame, cells[0], session_window(windows), theme, bg);
     pct_cell(frame, cells[1], weekly_window(windows), theme, bg);
     pct_cell(frame, cells[2], monthly_window(windows), theme, bg);
-    let cd = format_countdown(
-        now,
-        calendar_reset_window(windows).and_then(|w| w.resets_at),
-    );
+    let cd = format_countdown(now, table_reset_window(windows).and_then(|w| w.resets_at));
     let reset = if cd.is_empty() { "—".into() } else { cd };
     put(
         frame,

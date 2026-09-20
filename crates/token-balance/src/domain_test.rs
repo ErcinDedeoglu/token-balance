@@ -152,7 +152,10 @@ fn calendar_reset_skips_session() {
     let both = [weekly, monthly];
     let tighter = calendar_reset_window(&both).expect("mo");
     assert!(matches!(tighter.label, WindowLabel::Other(_)));
-    assert!(calendar_reset_window(&[session]).is_none());
+    let only = [session];
+    assert!(calendar_reset_window(&only).is_none());
+    let fallback = table_reset_window(&only).expect("session-only");
+    assert!(matches!(fallback.label, WindowLabel::FiveHour));
 }
 
 #[test]

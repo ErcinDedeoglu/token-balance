@@ -127,6 +127,10 @@ pub fn calendar_reset_window(windows: &[QuotaWindow]) -> Option<&QuotaWindow> {
     })
 }
 
+pub fn table_reset_window(windows: &[QuotaWindow]) -> Option<&QuotaWindow> {
+    calendar_reset_window(windows).or_else(|| session_window(windows))
+}
+
 fn cmp_calendar_reset(a: Option<DateTime<Utc>>, b: Option<DateTime<Utc>>) -> std::cmp::Ordering {
     match (a, b) {
         (Some(x), Some(y)) => x.cmp(&y),
