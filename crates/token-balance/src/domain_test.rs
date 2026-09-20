@@ -126,6 +126,36 @@ fn not_configured_clears_bars() {
 }
 
 #[test]
+fn calendar_reset_skips_session() {
+    let now = frozen().now();
+    let session = QuotaWindow::from_remaining_percent(
+        WindowLabel::FiveHour,
+        10.0,
+        Some(now + chrono::Duration::hours(4)),
+        Some(300),
+    );
+    let weekly = QuotaWindow::from_remaining_percent(
+        WindowLabel::Weekly,
+        80.0,
+        Some(now + chrono::Duration::days(5)),
+        Some(10080),
+    );
+    let monthly = QuotaWindow::from_remaining_percent(
+        WindowLabel::Other("mo".into()),
+        50.0,
+        Some(now + chrono::Duration::days(11)),
+        Some(43200),
+    );
+    let pair = [session.clone(), weekly.clone()];
+    let got = calendar_reset_window(&pair).expect("weekly");
+    assert!(matches!(got.label, WindowLabel::Weekly));
+    let both = [weekly, monthly];
+    let tighter = calendar_reset_window(&both).expect("mo");
+    assert!(matches!(tighter.label, WindowLabel::Other(_)));
+    assert!(calendar_reset_window(&[session]).is_none());
+}
+
+#[test]
 fn soonest_reset_is_min_timestamp() {
     let now = frozen().now();
     let a = QuotaWindow::from_remaining_percent(

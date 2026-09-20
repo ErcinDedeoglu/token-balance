@@ -224,9 +224,9 @@ pub fn effective_available(status: &ProviderStatus) -> Option<AvailableRef<'_>> 
 }
 
 pub use crate::windows::{
-    caption_duration, display_pct, extra_line, format_age, format_countdown, hero_window,
-    constraint_window, min_remaining, monthly_window, secondary_window, session_window,
-    soonest_reset, sort_snapshots, weekly_window,
+    calendar_reset_window, caption_duration, display_pct, extra_line, format_age, format_countdown,
+    hero_window, min_remaining, monthly_window, secondary_window, session_window, soonest_reset,
+    sort_snapshots, weekly_window,
 };
 
 #[cfg(test)]

@@ -43,7 +43,7 @@
     {
       "path": "crates/token-balance/src/table_test.rs",
       "class": "test",
-      "sha256": "c78a526a7fe057c6945866dac9e89b00ba974c85880b9ef95c27417d97d2c033",
+      "sha256": "d3b999ab9f38b9857411596c339ae7eb3d1dddafc322e0b85ae82c39b8f0ea6a",
       "concern": "table App.draw oracles",
       "rationale": "These tests drive one App.draw path for packed columns, monthly remaining, prepaid section, empty/unsigned rows, selected-row highlight, and the t card toggle. Splitting would duplicate mixed_app bootstrap and hide column-alignment regressions.",
       "kind": "keep-cohesive"

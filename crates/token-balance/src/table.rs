@@ -1,5 +1,5 @@
 use crate::domain::{
-    CreditUnit, ExtraCredits, LedgerKind, ProviderSnapshot, ProviderStatus, constraint_window,
+    CreditUnit, ExtraCredits, LedgerKind, ProviderSnapshot, ProviderStatus, calendar_reset_window,
     display_pct, effective_available, extra_line, format_countdown, monthly_window, session_window,
     weekly_window,
 };
@@ -182,7 +182,10 @@ fn paint_plan_cells(
     pct_cell(frame, cells[0], session_window(windows), theme, bg);
     pct_cell(frame, cells[1], weekly_window(windows), theme, bg);
     pct_cell(frame, cells[2], monthly_window(windows), theme, bg);
-    let cd = format_countdown(now, constraint_window(windows).and_then(|w| w.resets_at));
+    let cd = format_countdown(
+        now,
+        calendar_reset_window(windows).and_then(|w| w.resets_at),
+    );
     let reset = if cd.is_empty() { "—".into() } else { cd };
     put(
         frame,

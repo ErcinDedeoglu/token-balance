@@ -178,7 +178,14 @@ async fn table_default_mixed_80x24() {
     let codex = named_line(&buf, "Codex");
     assert!(codex.contains("18%"), "codex 5h:\n{codex}");
     assert!(codex.contains("63%"), "codex wk:\n{codex}");
-    assert!(codex.contains("1h 12m"), "codex reset:\n{codex}");
+    assert!(
+        codex.contains("4d 2h"),
+        "codex weekly reset not 5h:\n{codex}"
+    );
+    assert!(
+        !codex.contains("1h 12m"),
+        "must not show 5h clock:\n{codex}"
+    );
     let grok = named_line(&buf, "Grok");
     assert!(grok.contains("27%"), "grok wk:\n{grok}");
     assert!(grok.contains("3d 4h"), "grok reset:\n{grok}");
@@ -190,6 +197,8 @@ async fn table_default_mixed_80x24() {
     let kimi = named_line(&buf, "Kimi");
     assert!(kimi.contains("55%"), "kimi 5h:\n{kimi}");
     assert!(kimi.contains("88%"), "kimi wk:\n{kimi}");
+    assert!(kimi.contains("6d 1h"), "kimi weekly reset:\n{kimi}");
+    assert!(!kimi.contains("3h 40m"), "must not show 5h clock:\n{kimi}");
 }
 
 #[tokio::test]
@@ -308,7 +317,7 @@ async fn table_shows_session_and_weekly_percent() {
         windows: vec![
             QuotaWindow::from_remaining_percent(
                 WindowLabel::FiveHour,
-                100.0,
+                40.0,
                 Some(now + Duration::hours(4)),
                 Some(300),
             ),
@@ -324,18 +333,18 @@ async fn table_shows_session_and_weekly_percent() {
     sort_snapshots(&mut app.snapshots, SortMode::Risk);
     let buf = render_string(&mut app, 80, 24);
     let row = named_line(&buf, "Kimi");
-    assert!(row.contains("100%"), "session remaining:\n{row}\n{buf}");
+    assert!(row.contains("40%"), "session remaining:\n{row}\n{buf}");
     assert!(row.contains("80%"), "weekly remaining:\n{row}\n{buf}");
     let header = header_line(&buf);
     assert_eq!(cell(header, row, "mo"), "—", "mo dash:\n{row}\n{header}");
     let reset = cell(header, row, "reset");
     assert!(
         reset.contains("5d"),
-        "reset is weekly constraint not 5h session:\n{reset:?}\n{row}"
+        "reset is weekly even when 5h remaining is lower:\n{reset:?}\n{row}"
     );
     assert!(
         !reset.contains("4h"),
-        "must not show full 5h clock:\n{reset:?}\n{row}"
+        "must not show 5h clock:\n{reset:?}\n{row}"
     );
 }
 
@@ -357,7 +366,8 @@ async fn table_pack_columns_120() {
         five - name_end
     );
     assert!(row.contains("63%"), "codex wk:\n{row}");
-    assert!(row.contains("1h 12m"), "codex reset:\n{row}");
+    assert!(row.contains("4d 2h"), "codex weekly reset:\n{row}");
+    assert!(!row.contains("1h 12m"), "must not show 5h clock:\n{row}");
     assert_eq!(cell(header, row, "5h"), "18%");
     assert_eq!(cell(header, row, "wk"), "63%");
 }

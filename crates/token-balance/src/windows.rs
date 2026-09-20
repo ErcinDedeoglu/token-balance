@@ -119,7 +119,18 @@ pub fn soonest_reset(windows: &[QuotaWindow]) -> Option<DateTime<Utc>> {
 }
 
 pub fn constraint_window(windows: &[QuotaWindow]) -> Option<&QuotaWindow> {
-    windows.iter().min_by(|a, b| {
+    lowest_remaining(windows.iter())
+}
+
+pub fn calendar_reset_window(windows: &[QuotaWindow]) -> Option<&QuotaWindow> {
+    lowest_remaining(windows.iter().filter(|w| !w.is_session()))
+}
+
+fn lowest_remaining<'a, I>(windows: I) -> Option<&'a QuotaWindow>
+where
+    I: Iterator<Item = &'a QuotaWindow>,
+{
+    windows.min_by(|a, b| {
         a.remaining_percent
             .partial_cmp(&b.remaining_percent)
             .unwrap_or(std::cmp::Ordering::Equal)
