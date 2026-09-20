@@ -25,6 +25,7 @@ Index only. Keep ≤200 lines / 25 KB. Details live in linked files. Memory is a
 - [exa-wreq-http1-checkpoint](lessons/adapters/exa-wreq-http1-checkpoint.md) — adapters/exa-wreq-http1-checkpoint — Exa remaining uses wreq Chrome131 HTTP/1; stock reqwest 429s Vercel
 - [muse-429-is-exhausted-everyday](lessons/adapters/muse-429-is-exhausted-everyday.md) — adapters/muse-429-is-exhausted-everyday — Muse 429 + resets_at is 0% Everyday, not a dead token
 - [table-default-retargets-card-oracles](lessons/tui/table-default-retargets-card-oracles.md) — tui/table-default-retargets-card-oracles — table-first default; card TestBackend oracles run after `t`
+- [paragraph-bg-punches-block-fill](lessons/tui/paragraph-bg-punches-block-fill.md) — tui/paragraph-bg-punches-block-fill — selected table `Paragraph` cells must set `.bg` after a row Block fill
 
 ## Patterns
 

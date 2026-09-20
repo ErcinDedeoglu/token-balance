@@ -2,19 +2,20 @@
 
 - result: passed
 - growth: vertical
-- added: 0
-- modified: 4
+- added: 1
+- modified: 5
 - deleted: 0
 - moved: 0
 
 ## added
-- (none)
+- `memory/lessons/tui/paragraph-bg-punches-block-fill.md` 580d629674d76a76
 
 ## modified
-- `crates/token-balance/src/table.rs` 2aa124ec81f23696
-- `crates/token-balance/src/table_test.rs` 2a4bf667633fe983
-- `memory/daily/2026-09-20.md` 816293633588bb2c
-- `quality/cohesion-reviews.json` 4cde30843aca23c5
+- `crates/token-balance/src/table.rs` 282fd3dc9be80a8a
+- `crates/token-balance/src/table_test.rs` c78a526a7fe057c6
+- `memory/MEMORY.md` 5d336d27042481cf
+- `memory/daily/2026-09-20.md` 89b435ea2407e992
+- `quality/cohesion-reviews.json` f813d4cb1a059cf2
 
 ## moved
 - (none)

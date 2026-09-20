@@ -1,19 +1,19 @@
 use crate::domain::{
-    CreditUnit, ExtraCredits, LedgerKind, ProviderSnapshot, ProviderStatus, display_pct,
-    constraint_window, effective_available, extra_line, format_countdown, monthly_window,
-    session_window, weekly_window,
+    CreditUnit, ExtraCredits, LedgerKind, ProviderSnapshot, ProviderStatus, constraint_window,
+    display_pct, effective_available, extra_line, format_countdown, monthly_window, session_window,
+    weekly_window,
 };
 use crate::layout::{
     ScanView, clip, header_height, padded_inner, pager_prefix, table_name_width, table_row_chunks,
     visible_index_range,
 };
-use unicode_width::UnicodeWidthStr;
 use crate::theme::Theme;
 use chrono::{DateTime, Utc};
 use ratatui::Frame;
 use ratatui::layout::Rect;
-use ratatui::style::{Modifier, Style};
-use ratatui::widgets::Paragraph;
+use ratatui::style::{Color, Modifier, Style};
+use ratatui::widgets::{Block, Paragraph};
+use unicode_width::UnicodeWidthStr;
 
 pub const TABLE_COL_HEADER: u16 = 1;
 
@@ -137,6 +137,10 @@ fn paint_row(
     if cells.len() < 6 {
         return;
     }
+    let bg = selected.then_some(theme.border);
+    if let Some(c) = bg {
+        frame.render_widget(Block::default().style(Style::default().bg(c)), area);
+    }
     let name_style = if selected {
         Style::default()
             .fg(theme.border_selected)
@@ -145,34 +149,25 @@ fn paint_row(
         Style::default().fg(theme.text)
     };
     let name = format!(" {} {}", snap.glyph, snap.display_name);
-    frame.render_widget(
-        Paragraph::new(clip(&name, cells[0].width as usize)).style(name_style),
-        cells[0],
-    );
+    put(frame, cells[0], &name, name_style, bg);
     if snap.ledger == LedgerKind::PrepaidWallet {
-        paint_prepaid_cells(frame, &cells[1..], snap, theme);
+        paint_prepaid_cells(frame, &cells[1..], snap, theme, bg);
         return;
     }
     match effective_available(&snap.status) {
         Some(av) if !av.windows.is_empty() => {
-            paint_plan_cells(frame, &cells[1..], av.windows, av.extra.as_ref(), theme, now);
+            paint_plan_cells(
+                frame,
+                &cells[1..],
+                av.windows,
+                av.extra.as_ref(),
+                theme,
+                now,
+                bg,
+            );
         }
-        _ => paint_unsigned_cells(frame, &cells[1..], snap, theme),
+        _ => paint_unsigned_cells(frame, &cells[1..], snap, theme, bg),
     }
-    if selected {
-        paint_row_bars(frame, area, theme);
-    }
-}
-
-fn paint_row_bars(frame: &mut Frame<'_>, area: Rect, theme: Theme) {
-    if area.width < 2 {
-        return;
-    }
-    let bar = Style::default().fg(theme.border_selected);
-    let y = area.y;
-    frame.render_widget(Paragraph::new("│").style(bar), Rect { x: area.x, y, width: 1, height: 1 });
-    let x = area.x.saturating_add(area.width.saturating_sub(1));
-    frame.render_widget(Paragraph::new("│").style(bar), Rect { x, y, width: 1, height: 1 });
 }
 
 fn paint_plan_cells(
@@ -182,21 +177,22 @@ fn paint_plan_cells(
     extra: Option<&ExtraCredits>,
     theme: Theme,
     now: DateTime<Utc>,
+    bg: Option<Color>,
 ) {
-    pct_cell(frame, cells[0], session_window(windows), theme);
-    pct_cell(frame, cells[1], weekly_window(windows), theme);
-    pct_cell(frame, cells[2], monthly_window(windows), theme);
+    pct_cell(frame, cells[0], session_window(windows), theme, bg);
+    pct_cell(frame, cells[1], weekly_window(windows), theme, bg);
+    pct_cell(frame, cells[2], monthly_window(windows), theme, bg);
     let cd = format_countdown(now, constraint_window(windows).and_then(|w| w.resets_at));
     let reset = if cd.is_empty() { "—".into() } else { cd };
-    frame.render_widget(
-        Paragraph::new(clip(&reset, cells[3].width as usize)).style(Style::default().fg(theme.label)),
+    put(
+        frame,
         cells[3],
+        &reset,
+        Style::default().fg(theme.label),
+        bg,
     );
     let ex = extra.map(compact_extra).unwrap_or_else(|| "—".into());
-    frame.render_widget(
-        Paragraph::new(clip(&ex, cells[4].width as usize)).style(Style::default().fg(theme.extra)),
-        cells[4],
-    );
+    put(frame, cells[4], &ex, Style::default().fg(theme.extra), bg);
 }
 
 fn paint_prepaid_cells(
@@ -204,27 +200,27 @@ fn paint_prepaid_cells(
     cells: &[Rect],
     snap: &ProviderSnapshot,
     theme: Theme,
+    bg: Option<Color>,
 ) {
     let dash = Style::default().fg(theme.dim);
-    frame.render_widget(Paragraph::new("—").style(dash), cells[0]);
-    frame.render_widget(Paragraph::new("—").style(dash), cells[1]);
-    frame.render_widget(Paragraph::new("—").style(dash), cells[2]);
-    frame.render_widget(
-        Paragraph::new("no reset").style(Style::default().fg(theme.label)),
+    put(frame, cells[0], "—", dash, bg);
+    put(frame, cells[1], "—", dash, bg);
+    put(frame, cells[2], "—", dash, bg);
+    put(
+        frame,
         cells[3],
+        "no reset",
+        Style::default().fg(theme.label),
+        bg,
     );
     let amount = effective_available(&snap.status)
         .and_then(|a| a.extra.as_ref())
         .map(compact_extra)
         .unwrap_or_else(|| "—".into());
-    frame.render_widget(
-        Paragraph::new(clip(&amount, cells[4].width as usize)).style(
-            Style::default()
-                .fg(theme.extra)
-                .add_modifier(Modifier::BOLD),
-        ),
-        cells[4],
-    );
+    let extra = Style::default()
+        .fg(theme.extra)
+        .add_modifier(Modifier::BOLD);
+    put(frame, cells[4], &amount, extra, bg);
 }
 
 fn paint_unsigned_cells(
@@ -232,6 +228,7 @@ fn paint_unsigned_cells(
     cells: &[Rect],
     snap: &ProviderSnapshot,
     theme: Theme,
+    bg: Option<Color>,
 ) {
     let dim = Style::default().fg(theme.dim);
     let word = match &snap.status {
@@ -240,14 +237,11 @@ fn paint_unsigned_cells(
         ProviderStatus::Error { .. } => "error",
         ProviderStatus::Available { .. } => "unavailable",
     };
-    frame.render_widget(Paragraph::new("—").style(dim), cells[0]);
-    frame.render_widget(Paragraph::new("—").style(dim), cells[1]);
-    frame.render_widget(Paragraph::new("—").style(dim), cells[2]);
-    frame.render_widget(Paragraph::new("—").style(dim), cells[3]);
-    frame.render_widget(
-        Paragraph::new(clip(word, cells[4].width as usize)).style(dim),
-        cells[4],
-    );
+    put(frame, cells[0], "—", dim, bg);
+    put(frame, cells[1], "—", dim, bg);
+    put(frame, cells[2], "—", dim, bg);
+    put(frame, cells[3], "—", dim, bg);
+    put(frame, cells[4], word, dim, bg);
 }
 
 fn pct_cell(
@@ -255,20 +249,21 @@ fn pct_cell(
     area: Rect,
     window: Option<&crate::domain::QuotaWindow>,
     theme: Theme,
+    bg: Option<Color>,
 ) {
     let Some(w) = window else {
-        frame.render_widget(
-            Paragraph::new("—").style(Style::default().fg(theme.dim)),
-            area,
-        );
+        put(frame, area, "—", Style::default().fg(theme.dim), bg);
         return;
     };
     let pct = display_pct(w.remaining_percent);
-    let color = theme.remaining_color(pct);
-    frame.render_widget(
-        Paragraph::new(clip(&format!("{pct}%"), area.width as usize)).style(Style::default().fg(color)),
-        area,
-    );
+    let fg = Style::default().fg(theme.remaining_color(pct));
+    put(frame, area, &format!("{pct}%"), fg, bg);
+}
+
+fn put(frame: &mut Frame<'_>, area: Rect, text: &str, style: Style, bg: Option<Color>) {
+    let style = bg.map_or(style, |c| style.bg(c));
+    let text = clip(text, area.width as usize);
+    frame.render_widget(Paragraph::new(text).style(style), area);
 }
 
 fn compact_extra(ex: &ExtraCredits) -> String {

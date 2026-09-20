@@ -4,11 +4,14 @@ use crate::domain::{
 };
 use crate::fixtures::{FixtureSet, fixture_registry, frozen_demo_clock};
 use crate::overlay::Overlay;
+use crate::theme::Theme;
 use crate::tui::App;
 use chrono::Duration;
 use crossterm::event::KeyCode;
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
+use ratatui::buffer::Buffer;
+use ratatui::style::Color;
 use std::sync::Arc;
 use unicode_width::UnicodeWidthChar;
 
@@ -34,6 +37,32 @@ async fn mixed_app() -> App {
     app.bootstrap(&mut rx).await
 }
 
+fn buffer_line(buf: &Buffer, y: u16) -> String {
+    (0..buf.area.width)
+        .map(|x| buf[(x, y)].symbol().to_string())
+        .collect()
+}
+
+fn named_row_y(buf: &Buffer, name: &str) -> u16 {
+    for y in 0..buf.area.height {
+        let line = buffer_line(buf, y);
+        if line.contains(name) && !line.contains('┌') && !line.contains("worst") {
+            return y;
+        }
+    }
+    panic!("missing row {name}");
+}
+
+fn highlight_span(buf: &Buffer, y: u16, bg: Color) -> u16 {
+    let xs: Vec<u16> = (0..buf.area.width)
+        .filter(|&x| buf[(x, y)].bg == bg)
+        .collect();
+    match (xs.first(), xs.last()) {
+        (Some(&a), Some(&b)) => b - a + 1,
+        _ => 0,
+    }
+}
+
 fn last_line(buf: &str) -> &str {
     buf.lines()
         .rev()
@@ -57,10 +86,7 @@ fn col_start(header: &str, label: &str) -> usize {
     match label {
         "mo" => {
             let wk = header.find("wk").expect("wk before mo");
-            wk + 2
-                + header[wk + 2..]
-                    .find("mo")
-                    .expect("mo column after wk")
+            wk + 2 + header[wk + 2..].find("mo").expect("mo column after wk")
         }
         _ => header
             .find(label)
@@ -167,22 +193,30 @@ async fn table_default_mixed_80x24() {
 }
 
 #[tokio::test]
-async fn table_selected_row_spans_side_bars() {
+async fn table_selected_row_highlights_full_width() {
     let mut app = mixed_app().await;
     app.selected_id = Some("grok".into());
-    let buf = render_string(&mut app, 120, 24);
-    let grok = named_line(&buf, "Grok");
-    let first = grok.find('│').expect("left bar");
-    let last = grok.rfind('│').expect("right bar");
-    assert!(
-        last > first + 20,
-        "bars must span the record left to right:\n{grok}"
+    let backend = TestBackend::new(120, 24);
+    let mut terminal = Terminal::new(backend).expect("terminal");
+    terminal.draw(|f| app.draw(f)).expect("draw");
+    let buf = terminal.backend().buffer();
+    let theme = Theme::select();
+    let grok_y = named_row_y(buf, "Grok");
+    let kimi_y = named_row_y(buf, "Kimi");
+    let grok = buffer_line(buf, grok_y);
+    let name_x = grok.find("Grok").expect("Grok") as u16;
+    let extra_x = grok.find("400").expect("extra") as u16;
+    assert_eq!(buf[(name_x, grok_y)].bg, theme.border, "name bg:\n{grok}");
+    assert_eq!(buf[(extra_x, grok_y)].bg, theme.border, "extra bg:\n{grok}");
+    let span = highlight_span(buf, grok_y, theme.border);
+    assert!(span > 20, "highlight span {span}:\n{grok}");
+    assert_eq!(
+        highlight_span(buf, kimi_y, theme.border),
+        0,
+        "unselected Kimi:\n{}",
+        buffer_line(buf, kimi_y)
     );
-    let kimi = named_line(&buf, "Kimi");
-    assert!(
-        !kimi.contains('│'),
-        "unselected row must not have bars:\n{kimi}"
-    );
+    assert!(!grok.contains('│'), "no side bars:\n{grok}");
 }
 
 #[tokio::test]
@@ -249,10 +283,7 @@ async fn table_prepaid_section_below_plan() {
         .iter()
         .position(|l| l.contains("deepseek"))
         .expect("prepaid row");
-    assert!(
-        prepaid_at > plan_at,
-        "prepaid must sit below plan:\n{buf}"
-    );
+    assert!(prepaid_at > plan_at, "prepaid must sit below plan:\n{buf}");
     let row = lines[prepaid_at];
     assert!(row.contains("$3.38"), "teal remaining:\n{row}");
     assert!(row.contains("no reset"), "{row}");
@@ -373,9 +404,17 @@ async fn table_monthly_percent_and_extra() {
     let buf = render_string(&mut app, 120, 24);
     let header = header_line(&buf);
     let row = named_line(&buf, "claude mo");
-    assert_eq!(cell(header, row, "5h"), "—", "5h must not hold monthly:\n{row}\n{header}");
+    assert_eq!(
+        cell(header, row, "5h"),
+        "—",
+        "5h must not hold monthly:\n{row}\n{header}"
+    );
     assert_eq!(cell(header, row, "wk"), "—", "{row}");
-    assert_eq!(cell(header, row, "mo"), "10%", "monthly remaining:\n{row}\n{header}");
+    assert_eq!(
+        cell(header, row, "mo"),
+        "10%",
+        "monthly remaining:\n{row}\n{header}"
+    );
     assert!(row.contains("$203.79"), "extra:\n{row}");
 }
 
@@ -383,14 +422,19 @@ async fn table_monthly_percent_and_extra() {
 async fn table_monthly_only_percent() {
     let mut app = mixed_app().await;
     let now = app.snapshots[0].fetched_at;
-    app.snapshots.push(other_plan("kiro-mo", "kiro mo", 83.0, None, now));
+    app.snapshots
+        .push(other_plan("kiro-mo", "kiro mo", 83.0, None, now));
     sort_snapshots(&mut app.snapshots, SortMode::Risk);
     let buf = render_string(&mut app, 120, 24);
     let header = header_line(&buf);
     let row = named_line(&buf, "kiro mo");
     assert_eq!(cell(header, row, "5h"), "—", "not in 5h:\n{row}\n{header}");
     assert_eq!(cell(header, row, "wk"), "—", "{row}");
-    assert_eq!(cell(header, row, "mo"), "83%", "monthly only:\n{row}\n{header}");
+    assert_eq!(
+        cell(header, row, "mo"),
+        "83%",
+        "monthly only:\n{row}\n{header}"
+    );
 }
 
 #[tokio::test]
@@ -398,11 +442,10 @@ async fn table_empty_registry_hint() {
     let clock: Arc<dyn Clock> = Arc::new(frozen_demo_clock());
     let (mut app, _rx) = App::new(Vec::new(), clock, None);
     let buf = render_string(&mut app, 80, 24);
-    assert!(
-        buf.contains("accounts.toml"),
-        "empty hint:\n{buf}"
-    );
-    let header = buf.lines().any(|l| l.contains("5h") && l.contains("wk") && l.contains("mo"));
+    assert!(buf.contains("accounts.toml"), "empty hint:\n{buf}");
+    let header = buf
+        .lines()
+        .any(|l| l.contains("5h") && l.contains("wk") && l.contains("mo"));
     assert!(!header, "no 5h/wk/mo table header when empty:\n{buf}");
 }
 
@@ -443,9 +486,6 @@ async fn table_multi_pager_one_footer_row() {
         foot.contains('/') && foot.contains("t view:table"),
         "pager + keys one row: {foot:?}\n{buf}"
     );
-    let footer_lines = buf
-        .lines()
-        .filter(|l| l.contains("r refresh"))
-        .count();
+    let footer_lines = buf.lines().filter(|l| l.contains("r refresh")).count();
     assert_eq!(footer_lines, 1, "footer wrapped:\n{buf}");
 }
