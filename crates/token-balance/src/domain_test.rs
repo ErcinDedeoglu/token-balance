@@ -234,8 +234,37 @@ fn risk_sort_session_then_weekly_then_monthly() {
     sort_snapshots(&mut snaps, SortMode::Risk);
     assert_eq!(
         snaps.iter().map(|s| s.id.as_str()).collect::<Vec<_>>(),
-        vec!["muse", "kimi", "claude"]
+        vec!["kimi", "claude", "muse"]
     );
+}
+
+#[test]
+fn risk_sort_exhausted_sinks_below_usable() {
+    let now = frozen().now();
+    let empty = available(
+        "muse",
+        "muse",
+        vec![QuotaWindow::from_remaining_percent(
+            WindowLabel::FiveHour,
+            0.0,
+            Some(now + chrono::Duration::hours(1)),
+            Some(300),
+        )],
+    );
+    let weekly = available(
+        "grok",
+        "grok",
+        vec![QuotaWindow::from_remaining_percent(
+            WindowLabel::Weekly,
+            90.0,
+            Some(now + chrono::Duration::days(5)),
+            Some(10080),
+        )],
+    );
+    let mut snaps = vec![empty, weekly];
+    sort_snapshots(&mut snaps, SortMode::Risk);
+    assert_eq!(snaps[0].id, "grok");
+    assert_eq!(snaps[1].id, "muse");
 }
 
 #[test]

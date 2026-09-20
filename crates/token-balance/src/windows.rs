@@ -92,6 +92,28 @@ fn prepaid_rank(ledger: crate::domain::LedgerKind) -> u8 {
     }
 }
 
+fn is_exhausted(snap: &ProviderSnapshot) -> bool {
+    if snap.ledger == crate::domain::LedgerKind::PrepaidWallet {
+        return false;
+    }
+    let Some(av) = effective_available(&snap.status) else {
+        return false;
+    };
+    let any_win = av.windows.iter().any(|w| w.remaining_percent > 0.0);
+    let any_ex = av.extra.as_ref().is_some_and(|e| e.remaining > 0.0);
+    !any_win && !any_ex
+}
+
+fn fuel_rank(snap: &ProviderSnapshot) -> u8 {
+    if snap.ledger == crate::domain::LedgerKind::PrepaidWallet {
+        2
+    } else if is_exhausted(snap) {
+        1
+    } else {
+        0
+    }
+}
+
 pub fn soonest_reset(windows: &[QuotaWindow]) -> Option<DateTime<Utc>> {
     windows.iter().filter_map(|w| w.resets_at).min()
 }
@@ -131,7 +153,9 @@ pub fn sort_snapshots(snaps: &mut [ProviderSnapshot], mode: SortMode) {
             });
         }
         ga.cmp(&gb).then_with(|| {
-            pa.cmp(&pb).then_with(|| {
+            let fa = fuel_rank(a);
+            let fb = fuel_rank(b);
+            fa.cmp(&fb).then_with(|| pa.cmp(&pb)).then_with(|| {
                 if ga != 0 {
                     return a.id.cmp(&b.id);
                 }

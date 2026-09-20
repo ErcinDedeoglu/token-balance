@@ -88,7 +88,7 @@ Claude 5h 72% / weekly 41%: header may say `Claude 41%`; card hero is **72%** (s
 
 Available and Error-with-stale are **one** remaining-sort group. A stale danger card is still on fire.
 
-1. Group 0: has windows (`Available` **or** `Error` with stale Available). Prepaid after plan. Then **constraining window** (lowest remaining): session-class, then weekly, then monthly. Inside a class, that window’s `resets_at` (soonest first; missing last), then its remaining %, then `id`. Table **reset** column shows that same window’s countdown, not soonest-of-any.
+1. Group 0: has windows (`Available` **or** `Error` with stale Available). **Usable remaining first** (any window remaining > 0 or extra > 0), then exhausted 0% plans, then prepaid. Among usable: **constraining window** (lowest remaining): session-class, then weekly, then monthly. Inside a class, that window’s `resets_at` (soonest first; missing last), then its remaining %, then `id`. Table **reset** column shows that same window’s countdown, not soonest-of-any. Exhausted accounts (all windows 0% and no extra) sink so the list is “what I can still spend before reset.”
 2. Group 1: `Error` without stale
 3. Group 2: `NotConfigured`
 4. Group 3: `Unsupported`
