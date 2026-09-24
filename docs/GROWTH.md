@@ -21,14 +21,14 @@ docs/GROWTH.md
 
 `<product>/` keeps the stack name (`src/`, `app/`, `packages/`). `<domain>/` is a bounded context, not a layer.
 
-Beside every nested `AGENTS.md`, add a one-line adapter (symlink to that `AGENTS.md`) only if a harness in use cannot load nested `AGENTS.md`. Do not copy rules into the adapter. Do not invent a parallel rule tree per vendor.
+Adapters (`CLAUDE.md`, `GEMINI.md`) exist **only at the repo root**, and only as a pointer to `AGENTS.md`. Never add one beside a nested `AGENTS.md`. Nested instruction lives in that folder's `AGENTS.md`.
 
 ## Triggers — split that class now
 
 | Artifact | Split when |
 |----------|------------|
 | Root `AGENTS.md` | ≥60 lines, **or** a rule applies to only one domain |
-| Nested `AGENTS.md` | A root-level product folder has files, **or** that domain has different commands/Never-do |
+| Nested `AGENTS.md` | Direct product entries ≥ 8, or that folder already has `AGENTS.md` |
 | `memory/lessons/` | 3+ lessons share one domain |
 | `openspec/specs/` | A capability belongs to one domain |
 | Product file | Two concerns or over budget → `docs/QUALITY.md`, not this file |
@@ -72,8 +72,47 @@ After any split or new lesson/pattern/daily file, run `tooling/agent-kit/check.s
 ## Never
 
 - Nested AGENTS.md that restates root
+- Nested `CLAUDE.md` or `GEMINI.md`
+- Writing inside a git submodule
 - A second instruction body in a vendor file (keep adapters as pointers/symlinks)
 - Chronological memory filenames
 - `utils`, `helpers`, `common`, `misc` as domain names
 - Split by line count or `part-2` suffixes
 - Auto-write root AGENTS.md without user approval
+
+<!-- agent-kit:chain:begin -->
+## Chain gate
+
+The commit script decides. A product folder needs its own `AGENTS.md` when it has **8 or more direct product entries** (files in that folder, plus immediate subfolders that contain product files). Crowd threshold is 8. Editing this file does not raise it. `trivial.md` does not skip it. There is no opt-out.
+
+**Better to have the file than not.** At the threshold, write it even when the delta is one line — "run artifacts are generated, never hand-edit" is a real rule that belongs in that folder and nowhere else. The failure is an empty or copied file, not the file itself.
+
+Count only product entries. Do not count `AGENTS.md`, kit dirs (`docs/`, `memory/`, `openspec/`, `tooling/`), submodules, or generated dirs (`node_modules`, `dist`, `build`). A folder below 8 is covered by the nearest ancestor `AGENTS.md`. A deep folder at 8 is not excused because some parent already has a file.
+
+Every `AGENTS.md` has a `## Chain` section. Closest file still wins; the chain is how files find each other.
+
+```text
+## Chain
+
+- Up: (root)
+- Down: `src/AGENTS.md`
+```
+
+- Root Up is exactly `(root)`. Nested Up is a backtick path to the nearest ancestor `AGENTS.md` (skip folders that are under the threshold and have no file of their own).
+- Down is one backtick path per chain child, or exactly `- Down: (none)`. No other lines.
+- A chain child is a folder that already has `AGENTS.md`, or a folder at the crowd threshold. Parent lists those children. Child points up. Extra or missing links fail the commit.
+
+`.githooks/commit-gates` runs the chain gate in the `prepare-commit-msg` phase, which `git commit --no-verify` cannot skip, and rejects a forgotten file, a broken up/down link, or a `CLAUDE.md` anywhere but the repo root. `repo-quality` gates are dispatched by the same file. Re-run repo-scaffold init on an existing repo so the script and the hooks are installed.
+<!-- agent-kit:chain:end -->
+
+## Vendored growth — submodules
+
+A git submodule is a **foreign repository**, not a domain. It is never product growth.
+
+- Never create `AGENTS.md`, a lesson, or any kit file inside a submodule path. The plugin blocks the write; the checker fails the commit.
+- Knowledge about a submodule lives in the superproject: `docs/SUBMODULES.md` (generated register) plus a sidecar dir `docs/submodules/<slug>/` holding NOTES / RUNBOOK / STEERS / HISTORY.
+- Need behavior to change inside one? Bump the pinned commit, wrap it at your boundary, or file it upstream. Never a local edit.
+- Regenerate the register with `tooling/agent-kit/submodules.sh` after any pointer bump, and re-stamp a sidecar you re-read with `--review <path>`.
+
+Detail: `docs/SUBMODULES.md`.
+

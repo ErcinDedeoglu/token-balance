@@ -2,6 +2,12 @@
 
 **Precedence:** closest `AGENTS.md` wins. Explicit user prompts override files.
 
+## Chain
+
+- Up: (root)
+- Down: `crates/AGENTS.md`
+- Down: `goals/AGENTS.md`
+
 ## Commands
 
 | Task | Command |
@@ -24,6 +30,7 @@ Leave `n/a` until the command exists and has been run once. Never guess. Agent k
 | Design | `docs/design/` |
 | Quality | `docs/QUALITY.md` |
 | Growth | `docs/GROWTH.md` |
+| Submodules | `docs/SUBMODULES.md` |
 | Memory index | `memory/MEMORY.md` |
 | Templates | `memory/templates/` |
 | Lessons | `memory/lessons/` |
@@ -32,12 +39,13 @@ Leave `n/a` until the command exists and has been run once. Never guess. Agent k
 
 ## MUST
 
-These are gates, not suggestions. Git pre-commit and the OpenCode plugin enforce 1–2.
+These are gates, not suggestions. Git pre-commit, prepare-commit-msg, and the OpenCode plugin enforce 1–2. `--no-verify` does not skip the chain gate.
 
-1. Nested `AGENTS.md` in a product folder **before** any product file there.
+1. A product folder at the crowd threshold (8) has its own `AGENTS.md` before more files there. `## Chain` links up and down.
 2. `tooling/agent-kit/check.sh` green before claiming done (paste output). Then read `tooling/agent-kit/STATUS.md`. Red = not done.
 3. Non-obvious constraint → copy `memory/templates/lesson.md` to `memory/lessons/<domain>/`.
 4. Read `docs/GROWTH.md` before adding a root-level folder.
+5. Never write inside a git submodule — it is a foreign repo. See `docs/SUBMODULES.md`.
 
 ## Boundaries
 
@@ -46,10 +54,11 @@ These are gates, not suggestions. Git pre-commit and the OpenCode plugin enforce
 - Public API, schema, or migration changes
 - CI, secrets, production, force-push
 - Promoting a lesson into this file
+- Adding, removing, or bumping a submodule
 
 ### Never
 - Commit secrets or `.env`
-- Edit generated or vendored trees
+- Edit inside a submodule, generated, or vendored tree
 - Duplicate docs into this file
 - Auto-write rules here without user approval
 - Name files or folders `utils`, `helpers`, `common`, `misc`
@@ -62,4 +71,4 @@ These are gates, not suggestions. Git pre-commit and the OpenCode plugin enforce
 4. Prune stale entries; stale is worse than missing
 
 Quality contract: `docs/QUALITY.md` — read before structural changes.
-Growth contract: `docs/GROWTH.md` — split by domain before this file grows.
+Growth contract: `docs/GROWTH.md` — crowd threshold is 8; `## Chain` links up and down.

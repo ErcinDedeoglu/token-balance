@@ -3,17 +3,9 @@
     {
       "path": "AGENTS.md",
       "class": "root-agent-entry",
-      "sha256": "230f11465acb65a3cfb59dfdcc9ca13394ba79a15d9f13f260f00b64c4d5941c",
+      "sha256": "6b02e6117550e3a081a249ca8e8ccaa7c4a27760ad5317b21b66ead7b84384ff",
       "concern": "root operating-manual index",
-      "rationale": "Always-loaded index of commands, pointers, MUST gates, boundaries, and the memory loop. Splitting would scatter the entry file and force every session to reassemble it.",
-      "kind": "keep-cohesive"
-    },
-    {
-      "path": "tooling/agent-kit/check.sh",
-      "class": "source",
-      "sha256": "1264a1e9be09f57f905dda491345501f1cd4ff0e2a1d747c9f98905c0c1f6929",
-      "concern": "deterministic agent-kit structural checker",
-      "rationale": "One fail-closed kit gate: presence, caps, adapters, lesson/pattern/daily shape, and growth steer. Extracting checks into multiple scripts would let a partial gate go green.",
+      "rationale": "Always-loaded index of commands, pointers, MUST gates, boundaries, the memory loop, and Chain links. Splitting would scatter the entry file and force every session to reassemble it.",
       "kind": "keep-cohesive"
     },
     {
@@ -62,6 +54,14 @@
       "sha256": "4f0c865238aaa93db1ae3f6958c1906a6efb41d7a9b836c95ab9343b085ccd93",
       "concern": "live adapter mapper fixtures",
       "rationale": "One suite maps vendor JSON into domain status with shared helpers. Per-vendor files already exist for large adapters; remaining cases stay here so mapper regressions share one harness.",
+      "kind": "keep-cohesive"
+    },
+    {
+      "path": "tooling/agent-kit/submodules.sh",
+      "class": "source",
+      "sha256": "41c9011398806ceb125a8e11cc8006e073fab3be26ff06f8b7ece9148c1720b3",
+      "concern": "submodule register and sidecar generator",
+      "rationale": "One generator writes the submodule register and the four sidecar files from .gitmodules. Splitting the bash wrapper from the writer would let the register and the sidecars disagree.",
       "kind": "keep-cohesive"
     }
   ]

@@ -2,6 +2,13 @@
 
 Control files for `docs/QUALITY.md`. Not a product domain.
 
+## Chain
+
+- Up: `../AGENTS.md`
+- Down: (none)
+
+## Delta
+
 - `size-baseline.json` — shrink-only size ratchet
 - `cohesion-reviews.json` — hash-bound split-review keepers
 

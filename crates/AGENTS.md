@@ -2,6 +2,13 @@
 
 Cargo workspace for the remaining-quota TUI. One member: `token-balance`.
 
+## Chain
+
+- Up: `../AGENTS.md`
+- Down: `token-balance/AGENTS.md`
+
+## Delta
+
 - Version: `cargo run -p token-balance --bin token-balance -- --version` and `--bin tb`
 - Test: `cargo test -p token-balance` (recorded JSON only; no live vendor HTTP)
 - Never commit `target/`
