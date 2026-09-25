@@ -203,8 +203,14 @@ async fn click_selects_card_like_arrows() {
     show_cards(&mut app);
     let _ = render_string(&mut app, 80, 24);
     app.handle_mouse(click(4, 3));
+    if app.overlay != Overlay::None {
+        app.handle_key(KeyCode::Esc);
+    }
     let left = app.selected_id.clone();
     app.handle_mouse(click(60, 3));
+    if app.overlay != Overlay::None {
+        app.handle_key(KeyCode::Esc);
+    }
     let right = app.selected_id.clone();
     assert!(left.is_some() && right.is_some());
     assert_ne!(

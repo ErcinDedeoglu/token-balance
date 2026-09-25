@@ -1,7 +1,10 @@
+use super::oidc::{
+    access_expired, map_oidc_refresh, oidc_token_url, parse_grok_auth, persist_refreshed,
+};
 use super::*;
 use crate::adapters::pointer_secret;
 use crate::domain::{ProviderStatus, WindowLabel, effective_available};
-use crate::providers::AccountIdentity;
+use crate::providers::{AccountIdentity, Provider};
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -95,4 +98,70 @@ fn grok_401_points_at_login() {
     assert!(m.contains("401"), "{m}");
     assert!(m.contains("grok login"), "{m}");
     assert_eq!(billing_http_error(503), "HTTP 503");
+}
+
+#[test]
+fn grok_parses_nested_oidc_and_expired_access() {
+    let text = r#"{"https://auth.x.ai::x":{"key":"jwt","refresh_token":"rt","oidc_client_id":"cid","oidc_issuer":"https://auth.x.ai","expires_at":"2020-01-01T00:00:00Z"}}"#;
+    let a = parse_grok_auth(text).unwrap();
+    assert_eq!(a.access, "jwt");
+    assert_eq!(a.refresh.as_deref(), Some("rt"));
+    assert_eq!(a.client_id.as_deref(), Some("cid"));
+    assert_eq!(a.issuer.as_deref(), Some("https://auth.x.ai"));
+    assert!(access_expired(&a));
+    assert_eq!(
+        oidc_token_url("https://auth.x.ai"),
+        "https://auth.x.ai/oauth2/token"
+    );
+}
+
+#[test]
+fn grok_maps_oidc_refresh_json() {
+    let v = json!({
+        "access_token": "new",
+        "refresh_token": "rt2",
+        "expires_in": 21600,
+        "token_type": "Bearer"
+    });
+    let (a, r, exp) = map_oidc_refresh(&v).unwrap();
+    assert_eq!(a, "new");
+    assert_eq!(r.as_deref(), Some("rt2"));
+    assert_eq!(exp, 21600);
+}
+
+#[test]
+fn grok_persists_rotated_refresh_into_auth_json() {
+    let home = scratch_home();
+    let path = home.join(".grok/auth.json");
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(
+        &path,
+        r#"{"https://auth.x.ai::x":{"key":"old","refresh_token":"rt1","oidc_client_id":"cid","oidc_issuer":"https://auth.x.ai","expires_at":"2020-01-01T00:00:00Z"}}"#,
+    )
+    .unwrap();
+    let c = Credentials::isolated(home, BTreeMap::new());
+    persist_refreshed(
+        &c,
+        &Pointer::File(".grok/auth.json".into()),
+        "new-jwt",
+        Some("rt2"),
+        21600,
+    );
+    let text = std::fs::read_to_string(path).unwrap();
+    assert!(text.contains("new-jwt"), "{text}");
+    assert!(text.contains("rt2"), "{text}");
+    assert!(!text.contains("rt1"), "{text}");
+}
+
+#[tokio::test]
+#[ignore]
+async fn grok_live_oidc_refresh_fetches_billing() {
+    let c = Credentials::from_process();
+    let adapter = GrokAdapter::from_credentials(&c);
+    match adapter.fetch().await {
+        ProviderStatus::Available { windows, .. } => {
+            assert!(!windows.is_empty(), "live grok weekly window");
+        }
+        other => panic!("live grok fetch failed: {other:?}"),
+    }
 }

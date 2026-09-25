@@ -8,7 +8,9 @@ use crate::layout::{
     visible_card_rows, visible_index_range,
 };
 use crate::overlay::{Overlay, render_detail, render_help};
-use crate::table::{footer_keys, paint_table, table_at, table_pager, visible_table_rows};
+use crate::table::{
+    footer_key_at, footer_keys, paint_table, table_at, table_pager, visible_table_rows,
+};
 use crate::theme::Theme;
 use chrono::{DateTime, Utc};
 use ratatui::Frame;
@@ -16,6 +18,12 @@ use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Hit {
+    Row(String),
+    Key(char),
+}
 
 pub fn paint(
     frame: &mut Frame<'_>,
@@ -222,13 +230,12 @@ pub fn hit_at(
     snapshots: &[ProviderSnapshot],
     scroll_row: u16,
     view: ScanView,
-) -> Option<String> {
-    if snapshots.is_empty() {
-        return None;
-    }
-    let (_, body, _) = pack_chrome(area, snapshots.len(), scroll_row, view);
-    if view == ScanView::Table {
-        return table_at(
+    sort: SortMode,
+) -> Option<Hit> {
+    let n = snapshots.len();
+    let (_, body, footer) = pack_chrome(area, n, scroll_row, view);
+    if n > 0 && view == ScanView::Table {
+        if let Some(id) = table_at(
             col,
             row,
             body,
@@ -236,43 +243,76 @@ pub fn hit_at(
             scroll_row,
             area.width,
             area.height,
-        );
-    }
-    let cols = columns(area.width);
-    let vis = visible_card_rows(area.height, area.width);
-    let n = snapshots.len();
-    let (start, end) = visible_index_range(scroll_row, vis, cols, n);
-    let inner = padded_inner(body);
-    let mut y = inner.y;
-    let mut idx = start;
-    while idx < end {
-        let row_area = Rect {
-            x: inner.x,
-            y,
-            width: inner.width,
-            height: CARD_ROWS.min(inner.y + inner.height - y),
-        };
-        if row_area.height < CARD_ROWS {
-            break;
+        ) {
+            return Some(Hit::Row(id));
         }
-        let slots = card_row_areas(row_area, cols);
-        for (c, slot) in slots.into_iter().enumerate() {
-            let i = idx + c;
-            if i >= end {
+    } else if n > 0 {
+        let cols = columns(area.width);
+        let vis = visible_card_rows(area.height, area.width);
+        let (start, end) = visible_index_range(scroll_row, vis, cols, n);
+        let inner = padded_inner(body);
+        let mut y = inner.y;
+        let mut idx = start;
+        while idx < end {
+            let row_area = Rect {
+                x: inner.x,
+                y,
+                width: inner.width,
+                height: CARD_ROWS.min(inner.y + inner.height - y),
+            };
+            if row_area.height < CARD_ROWS {
                 break;
             }
-            if col >= slot.x
-                && col < slot.x.saturating_add(slot.width)
-                && row >= slot.y
-                && row < slot.y.saturating_add(slot.height)
-            {
-                return Some(snapshots[i].id.clone());
+            let slots = card_row_areas(row_area, cols);
+            for (c, slot) in slots.into_iter().enumerate() {
+                let i = idx + c;
+                if i >= end {
+                    break;
+                }
+                if col >= slot.x
+                    && col < slot.x.saturating_add(slot.width)
+                    && row >= slot.y
+                    && row < slot.y.saturating_add(slot.height)
+                {
+                    return Some(Hit::Row(snapshots[i].id.clone()));
+                }
             }
+            idx += cols as usize;
+            y = y.saturating_add(CARD_ROWS);
         }
-        idx += cols as usize;
-        y = y.saturating_add(CARD_ROWS);
     }
-    None
+    if row != footer.y {
+        return None;
+    }
+    footer_key_at(
+        col.saturating_sub(footer.x),
+        &footer_text(snapshots, sort, scroll_row, area.width, area.height, view),
+    )
+    .map(Hit::Key)
+}
+
+fn footer_text(
+    snapshots: &[ProviderSnapshot],
+    sort: SortMode,
+    scroll_row: u16,
+    width: u16,
+    height: u16,
+    view: ScanView,
+) -> String {
+    let n = snapshots.len();
+    let keys = footer_keys(sort, view);
+    let pager = if view == ScanView::Table {
+        table_pager(scroll_row, height, width, n)
+    } else {
+        let cols = columns(width);
+        let vis = visible_card_rows(height, width);
+        let (start, end) = visible_index_range(scroll_row, vis, cols, n);
+        pager_prefix(start, end, n)
+    };
+    match pager {
+        Some(p) => format!(" {p}  {keys}"),
+        None => keys,
+    }
 }
 
 fn draw_footer(
@@ -286,20 +326,7 @@ fn draw_footer(
     theme: Theme,
     view: ScanView,
 ) {
-    let n = snapshots.len();
-    let keys = footer_keys(sort, view);
-    let pager = if view == ScanView::Table {
-        table_pager(scroll_row, height, width, n)
-    } else {
-        let cols = columns(width);
-        let vis = visible_card_rows(height, width);
-        let (start, end) = visible_index_range(scroll_row, vis, cols, n);
-        pager_prefix(start, end, n)
-    };
-    let text = match pager {
-        Some(p) => format!(" {p}  {keys}"),
-        None => keys,
-    };
+    let text = footer_text(snapshots, sort, scroll_row, width, height, view);
     frame.render_widget(
         Paragraph::new(Line::from(Span::styled(
             text,

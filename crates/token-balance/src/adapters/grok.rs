@@ -6,6 +6,13 @@ use crate::providers::{AccountIdentity, FetchFuture, Provider, RefreshPolicy};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 
+#[path = "grok_oidc.rs"]
+mod oidc;
+
+use oidc::{
+    access_expired, grok_http, parse_grok_auth, refresh_and_store,
+};
+
 pub const GROK_BILLING_URL: &str = "https://cli-chat-proxy.grok.com/v1/billing?format=credits";
 pub const GROK_AUTH_KEYS: &[&str] = &["token", "access_token", "accessToken", "key"];
 
@@ -42,6 +49,7 @@ impl GrokAdapter {
         }
     }
 
+    #[cfg(test)]
     fn live_token(&self) -> Option<String> {
         let (c, pointer) = self.live.as_ref()?;
         pointer_secret(c, pointer, GROK_AUTH_KEYS)
@@ -100,14 +108,7 @@ pub fn map_grok_billing(v: &Value) -> ProviderStatus {
 }
 
 async fn get_billing(token: &str) -> Result<Value, String> {
-    // rustls/default reqwest was 401 on this host; curl/urllib 200 with the same JWT.
-    let client = reqwest::Client::builder()
-        .user_agent("grok-shell")
-        .use_native_tls()
-        .http1_only()
-        .build()
-        .map_err(|e| e.to_string())?;
-    let resp = client
+    let resp = grok_http()?
         .get(GROK_BILLING_URL)
         .header("Authorization", format!("Bearer {token}"))
         .header("X-XAI-Token-Auth", "xai-grok-cli")
@@ -127,6 +128,56 @@ pub fn billing_http_error(status: u16) -> String {
     match status {
         401 => "HTTP 401 Unauthorized — grok login".into(),
         n => format!("HTTP {n}"),
+    }
+}
+
+async fn fetch_live(creds: &Credentials, pointer: &Pointer) -> ProviderStatus {
+    let mut auth = match pointer {
+        Pointer::File(rel) => creds
+            .read_to_string(rel)
+            .as_deref()
+            .and_then(parse_grok_auth),
+        Pointer::Env(_) => None,
+    };
+    if let Some(a) = auth.as_mut() {
+        if access_expired(a) {
+            let _ = refresh_and_store(creds, pointer, a).await;
+        }
+    }
+    let token = match auth.as_ref().map(|a| a.access.clone()) {
+        Some(t) => t,
+        None => match pointer_secret(creds, pointer, GROK_AUTH_KEYS) {
+            Some(t) => t,
+            None => {
+                return ProviderStatus::NotConfigured {
+                    hint: "grok login".into(),
+                };
+            }
+        },
+    };
+    match get_billing(&token).await {
+        Ok(v) => map_grok_billing(&v),
+        Err(e) if e.contains("401") => {
+            if let Some(a) = auth.as_mut() {
+                if refresh_and_store(creds, pointer, a).await.is_ok() {
+                    return match get_billing(&a.access).await {
+                        Ok(v) => map_grok_billing(&v),
+                        Err(e2) => ProviderStatus::Error {
+                            message: e2,
+                            stale: None,
+                        },
+                    };
+                }
+            }
+            ProviderStatus::Error {
+                message: e,
+                stale: None,
+            }
+        }
+        Err(e) => ProviderStatus::Error {
+            message: e,
+            stale: None,
+        },
     }
 }
 
@@ -150,22 +201,14 @@ impl Provider for GrokAdapter {
         if let Some(v) = self.recorded.clone() {
             return Box::pin(async move { map_grok_billing(&v) });
         }
-        let Some(token) = self.live_token() else {
+        let Some((creds, pointer)) = self.live.clone() else {
             return Box::pin(async {
                 ProviderStatus::NotConfigured {
                     hint: "grok login".into(),
                 }
             });
         };
-        Box::pin(async move {
-            match get_billing(&token).await {
-                Ok(v) => map_grok_billing(&v),
-                Err(e) => ProviderStatus::Error {
-                    message: e,
-                    stale: None,
-                },
-            }
-        })
+        Box::pin(async move { fetch_live(&creds, &pointer).await })
     }
 }
 

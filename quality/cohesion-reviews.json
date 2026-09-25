@@ -19,33 +19,33 @@
     {
       "path": "crates/token-balance/src/tui.rs",
       "class": "source",
-      "sha256": "19255df8bd698ee64a7bc5bf374b489eaed9da84f1a1a7d8aac044c5e9c68e95",
+      "sha256": "37d6f95b21c6f75d4175e88d6f99c696dc907d214af2dfd1d09900d3acbd7296",
       "concern": "board App event loop and selection",
-      "rationale": "App owns snapshots, selection, overlay, refresh queue, error backoff, and input. Keys, mouse, timer retry, and r-reload all mutate the same selected_id and in-flight set; extracting one handler would split that state.",
+      "rationale": "App owns snapshots, selection, overlay, refresh queue, error backoff, and input. Keys, a second click (detail), footer-key clicks, timer retry, and r-reload all mutate the same selected_id and overlay; extracting one handler would split that state.",
       "kind": "keep-cohesive"
     },
     {
       "path": "crates/token-balance/src/board.rs",
       "class": "source",
-      "sha256": "26a7dd848669fd2742567437eceac79623403def09a1b55053b7c7f6df262fdf",
+      "sha256": "0a721b1d896d01b8db458b3b994d391f1231617e184ad0559e3a01ae73dc553c",
       "concern": "board chrome and table-or-cards dispatch",
-      "rationale": "paint, pack_chrome, hit_at, and footer share ScanView, scroll_row, and snapshot order so table vs cards stay one board; extracting one would desync pager, click, and body height.",
+      "rationale": "paint, pack_chrome, hit_at, and footer share ScanView, scroll_row, and snapshot order so table vs cards stay one board. Hit::Row and Hit::Key use that same chrome; extracting footer hits would desync pager, click, and body height.",
       "kind": "keep-cohesive"
     },
     {
       "path": "crates/token-balance/src/table_test.rs",
       "class": "test",
-      "sha256": "3e6a9c03d9ad9d564ecfe1f8527b2771504d27cb6b9108447310eb64de3e5f9a",
+      "sha256": "9e213cf888e2fbb7160d99918dd82b6a2162e4de08c326744ef584d33e7301cd",
       "concern": "table App.draw oracles",
-      "rationale": "These tests drive one App.draw path for packed columns, monthly remaining, prepaid section, empty/unsigned rows, selected-row highlight, and the t card toggle. Splitting would duplicate mixed_app bootstrap and hide column-alignment regressions.",
+      "rationale": "These tests drive one App.draw path for packed columns, monthly remaining, prepaid section, empty/unsigned rows, selected-row highlight, footer clicks, and the t card toggle. Splitting would duplicate mixed_app bootstrap and hide column-alignment regressions.",
       "kind": "keep-cohesive"
     },
     {
       "path": "crates/token-balance/src/tui_test.rs",
       "class": "test",
-      "sha256": "509f7eadbb2ce34d7c43349447bb3eddad09e1b5343f02c2cead156a69a48374",
+      "sha256": "46abf14e176b76dcc8b9b16c48f6ec6c0a6c0cdbc858a380913ae1b3239af7c1",
       "concern": "board App interaction tests",
-      "rationale": "These tests drive one App through keys, mouse, overlays, live-config reload, and error backoff retry. Splitting would duplicate mixed_app bootstrap and hide selection regressions.",
+      "rationale": "These tests drive one App through keys, mouse, overlays, live-config reload, and error backoff retry. Card clicks may open detail, so oracles dismiss that overlay. Splitting would duplicate mixed_app bootstrap and hide selection regressions.",
       "kind": "keep-cohesive"
     },
     {

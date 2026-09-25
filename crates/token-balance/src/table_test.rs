@@ -7,7 +7,9 @@ use crate::overlay::Overlay;
 use crate::theme::Theme;
 use crate::tui::App;
 use chrono::Duration;
-use crossterm::event::KeyCode;
+use crate::layout::ScanView;
+use crate::table::{footer_key_at, footer_keys};
+use crossterm::event::{KeyCode, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
 use ratatui::buffer::Buffer;
@@ -537,4 +539,47 @@ async fn table_multi_pager_one_footer_row() {
     );
     let footer_lines = buf.lines().filter(|l| l.contains("r refresh")).count();
     assert_eq!(footer_lines, 1, "footer wrapped:\n{buf}");
+}
+
+fn click(column: u16, row: u16) -> MouseEvent {
+    MouseEvent {
+        kind: MouseEventKind::Down(MouseButton::Left),
+        column,
+        row,
+        modifiers: KeyModifiers::empty(),
+    }
+}
+
+#[test]
+fn footer_key_at_hits_o() {
+    let line = footer_keys(SortMode::Risk, ScanView::Table);
+    let o = line.find("o sort").expect("o") as u16;
+    assert_eq!(footer_key_at(1, &line), Some('r'));
+    assert_eq!(footer_key_at(o, &line), Some('o'));
+    assert_eq!(footer_key_at(11, &line), None);
+}
+
+#[tokio::test]
+async fn click_table_row_and_footer() {
+    let mut app = mixed_app().await;
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).expect("terminal");
+    terminal.draw(|f| app.draw(f)).expect("draw");
+    let kimi_y = named_row_y(terminal.backend().buffer(), "Kimi");
+    app.handle_mouse(click(4, kimi_y));
+    assert_eq!(app.selected_id.as_deref(), Some("kimi"));
+    assert_eq!(app.overlay, Overlay::None);
+    app.handle_mouse(click(4, kimi_y));
+    assert_eq!(app.overlay, Overlay::Detail);
+    app.handle_mouse(click(4, kimi_y));
+    assert_eq!(app.overlay, Overlay::None);
+    let buf = render_string(&mut app, 80, 24);
+    let (y, line) = buf
+        .lines()
+        .enumerate()
+        .find(|(_, l)| l.contains("r refresh"))
+        .expect("footer");
+    let x = line.find("o sort").expect("o sort") as u16;
+    app.handle_mouse(click(x, y as u16));
+    assert_eq!(app.sort, SortMode::Name);
 }

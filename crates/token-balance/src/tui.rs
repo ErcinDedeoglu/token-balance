@@ -1,5 +1,5 @@
 use crate::adapters::live_registry;
-use crate::board::{hit_at, paint};
+use crate::board::{Hit, hit_at, paint};
 use crate::credentials::Credentials;
 use crate::domain::{
     Clock, ProviderSnapshot, ProviderStatus, SortMode, apply_fetch, sort_snapshots,
@@ -304,16 +304,25 @@ impl App {
             self.overlay = Overlay::None;
             return;
         }
-        if let Some(id) = hit_at(
+        match hit_at(
             ev.column,
             ev.row,
             self.last_area,
             &self.snapshots,
             self.scroll_row,
             self.view,
+            self.sort,
         ) {
-            self.selected_id = Some(id);
-            self.sync_scroll();
+            Some(Hit::Row(id)) => {
+                if self.selected_id.as_deref() == Some(id.as_str()) {
+                    self.overlay = Overlay::Detail;
+                } else {
+                    self.selected_id = Some(id);
+                    self.sync_scroll();
+                }
+            }
+            Some(Hit::Key(c)) => self.handle_key(KeyCode::Char(c)),
+            None => {}
         }
     }
 

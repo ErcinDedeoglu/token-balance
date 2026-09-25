@@ -35,6 +35,20 @@ pub fn footer_keys(sort: crate::domain::SortMode, view: ScanView) -> String {
     )
 }
 
+pub fn footer_key_at(col: u16, line: &str) -> Option<char> {
+    let mut x = 0u16;
+    for part in line.split("   ") {
+        let w = part.width() as u16;
+        let end = x.saturating_add(w);
+        if col >= x && col < end {
+            let c = part.trim().chars().next()?;
+            return matches!(c, 'r' | 'o' | 't' | '?' | 'q').then_some(c);
+        }
+        x = end.saturating_add(3);
+    }
+    None
+}
+
 pub fn paint_table(
     frame: &mut Frame<'_>,
     area: Rect,
