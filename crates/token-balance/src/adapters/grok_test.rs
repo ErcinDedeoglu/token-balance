@@ -46,6 +46,27 @@ fn grok_uses_credit_usage_not_prepaid() {
 }
 
 #[test]
+fn grok_fresh_weekly_period_without_percent_is_full() {
+    let v = json!({
+        "config": {
+            "currentPeriod": {
+                "type": "USAGE_PERIOD_TYPE_WEEKLY",
+                "start": "2026-09-25T19:00:05Z",
+                "end": "2026-10-02T19:00:05Z"
+            },
+            "onDemandCap": { "val": 0 },
+            "onDemandUsed": { "val": 0 },
+            "prepaidBalance": { "val": 0 },
+            "billingPeriodEnd": "2026-10-02T19:00:05Z"
+        }
+    });
+    let status = map_grok_billing(&v);
+    let av = effective_available(&status).expect("weekly window");
+    assert_eq!(av.windows[0].remaining_percent, 100.0);
+    assert!(av.extra.is_none());
+}
+
+#[test]
 fn grok_prepaid_only_is_error() {
     let v = json!({ "remaining_balance": 12.5, "prepaidBalance": { "val": 99 } });
     match map_grok_billing(&v) {

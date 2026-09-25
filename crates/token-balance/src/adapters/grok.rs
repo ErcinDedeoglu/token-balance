@@ -56,6 +56,13 @@ impl GrokAdapter {
     }
 }
 
+fn weekly_period(config: &Value) -> bool {
+    config
+        .pointer("/currentPeriod/type")
+        .and_then(|x| x.as_str())
+        == Some("USAGE_PERIOD_TYPE_WEEKLY")
+}
+
 fn ts(s: &str) -> Option<DateTime<Utc>> {
     DateTime::parse_from_rfc3339(s)
         .ok()
@@ -64,14 +71,16 @@ fn ts(s: &str) -> Option<DateTime<Utc>> {
 
 pub fn map_grok_billing(v: &Value) -> ProviderStatus {
     let config = v.get("config").unwrap_or(v);
-    let used_pct = json_f64(&config["creditUsagePercent"]).or_else(|| {
-        let used = config.pointer("/onDemandUsed/val").and_then(json_f64);
-        let cap = config.pointer("/onDemandCap/val").and_then(json_f64);
-        match (used, cap) {
-            (Some(u), Some(c)) if c > 0.0 => Some(u / c * 100.0),
-            _ => None,
-        }
-    });
+    let used_pct = json_f64(&config["creditUsagePercent"])
+        .or_else(|| {
+            let used = config.pointer("/onDemandUsed/val").and_then(json_f64);
+            let cap = config.pointer("/onDemandCap/val").and_then(json_f64);
+            match (used, cap) {
+                (Some(u), Some(c)) if c > 0.0 => Some(u / c * 100.0),
+                _ => None,
+            }
+        })
+        .or_else(|| weekly_period(config).then_some(0.0));
     let Some(used_pct) = used_pct else {
         return ProviderStatus::Error {
             message: "grok billing: missing creditUsagePercent".into(),
