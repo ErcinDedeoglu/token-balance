@@ -3,7 +3,7 @@
     {
       "path": "AGENTS.md",
       "class": "root-agent-entry",
-      "sha256": "6b02e6117550e3a081a249ca8e8ccaa7c4a27760ad5317b21b66ead7b84384ff",
+      "sha256": "8173fc877e31444f7662c232a84de21a3a52f3faccb1dadbd9998cf277c92a08",
       "concern": "root operating-manual index",
       "rationale": "Always-loaded index of commands, pointers, MUST gates, boundaries, the memory loop, and Chain links. Splitting would scatter the entry file and force every session to reassemble it.",
       "kind": "keep-cohesive"
@@ -59,9 +59,25 @@
     {
       "path": "tooling/agent-kit/submodules.sh",
       "class": "source",
-      "sha256": "41c9011398806ceb125a8e11cc8006e073fab3be26ff06f8b7ece9148c1720b3",
+      "sha256": "1743f8bb97fa59fbe3a31bc1de4f7ebf4e5320ee895c251525f233701669135e",
       "concern": "submodule register and sidecar generator",
       "rationale": "One generator writes the submodule register and the four sidecar files from .gitmodules. Splitting the bash wrapper from the writer would let the register and the sidecars disagree.",
+      "kind": "keep-cohesive"
+    },
+    {
+      "path": "tooling/agent-kit/check.sh",
+      "class": "source",
+      "sha256": "d3b1fef284b519fb3c955cd46370a238bad332fd448b9287e3b2ef79119957ac",
+      "concern": "deterministic agent-kit structure gate",
+      "rationale": "One fail-closed checker for agent files: presence, caps, chain links, memory shape, submodule register and dirtiness. Splitting parser from checks would let a partial gate go green and stop matching the commit dispatcher.",
+      "kind": "keep-cohesive"
+    },
+    {
+      "path": "tooling/agent-kit/agents_chain_lib.py",
+      "class": "source",
+      "sha256": "09c9383ca63240797d2c10995e93cf8d0dee5b472e9287673ef30195e47dec59",
+      "concern": "agent-kit chain and growth classification library",
+      "rationale": "Shared primitives for crowd counting, chain parsing, kit-root detection, submodule pruning and ignore handling. Every kit gate imports these; splitting them would let the chain, growth and status tools disagree about what a product folder is.",
       "kind": "keep-cohesive"
     }
   ]

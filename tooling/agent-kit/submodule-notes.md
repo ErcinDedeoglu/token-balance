@@ -13,6 +13,8 @@ Path: `{{SUBMODULE_PATH}}` — **foreign repo. Read-only. Never edit in place.**
 <!-- agent-kit:reviewed-at: unreviewed -->
 
 The stamp above is the submodule sha these notes were last verified against.
+It establishes no upstream merge, parent-trunk adoption or deployment. Scope each
+finding to parent checkout/child revision via context or its daily-session citation.
 Update it in the same commit you update these notes:
 `tooling/agent-kit/submodules.sh --review {{SUBMODULE_PATH}}`
 

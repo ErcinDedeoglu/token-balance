@@ -6,7 +6,7 @@ Index only. Keep ≤200 lines / 25 KB. Details live in linked files. Memory is a
 
 - Do not load this file every session. Open it when a Pattern-Key, path, or user correction matches the task.
 - Read a linked lesson only when that match holds.
-- After a verified outcome, copy `templates/lesson.md` to `lessons/<domain>/<slug>.md` and add one index bullet. Unknown domain → `lessons/_unsorted/`.
+- After a verified outcome, copy `templates/lesson.md` to `lessons/<domain>/<slug>.md` and index it in `LESSONS.md`. Unknown domain → `lessons/_unsorted/`.
 - After 3 recurrences of one Pattern-Key, copy `templates/pattern.md` to `patterns/<domain>/<key>.md` and propose one AGENTS.md rule (nested if domain-only). Do not write AGENTS.md without approval.
 - Daily log: copy `templates/daily.md` to `daily/YYYY-MM-DD.md`.
 - When a lesson is wrong, mark it superseded in place or delete it. Do not leave contradictions.
@@ -14,22 +14,12 @@ Index only. Keep ≤200 lines / 25 KB. Details live in linked files. Memory is a
 ## Project
 
 - Name: token-balance
-- Stack: n/a (Rust 2024 + ratatui locked in `docs/design/`; no crate yet)
+- Stack: Rust 2024 + ratatui; workspace `crates/`, crate `crates/token-balance`
 - Constraints: product design is `docs/design/` (split by concern)
 
 ## Lessons
 
-- [control-files-need-nested-agents](lessons/quality/control-files-need-nested-agents.md) — quality/nested-agents-before-top-level-files — `quality/` still needs nested AGENTS.md
-- [design-folder-by-concern](lessons/docs/design-folder-by-concern.md) — docs/design-docs-split-by-concern — oversized designs go in `docs/design/` by concern
-- [grok-reread-auth-on-fetch](lessons/adapters/grok-reread-auth-on-fetch.md) — adapters/grok-reread-auth-on-fetch — Grok JWT is re-read on each fetch; 401 means `grok login` after curl check
-- [grok-oidc-refresh-same-as-cli](lessons/adapters/grok-oidc-refresh-same-as-cli.md) — adapters/grok-oidc-refresh-same-as-cli — refresh_token grant to auth.x.ai; persist rotated RT
-- [grok-omitted-percent-is-fresh-week](lessons/adapters/grok-omitted-percent-is-fresh-week.md) — adapters/grok-omitted-percent-is-fresh-week — omitted creditUsagePercent on a weekly period is 0% used
-- [exa-wreq-http1-checkpoint](lessons/adapters/exa-wreq-http1-checkpoint.md) — adapters/exa-wreq-http1-checkpoint — Exa remaining uses wreq Chrome131 HTTP/1; stock reqwest 429s Vercel
-- [muse-429-is-exhausted-everyday](lessons/adapters/muse-429-is-exhausted-everyday.md) — adapters/muse-429-is-exhausted-everyday — Muse 429 + resets_at is 0% Everyday, not a dead token
-- [table-default-retargets-card-oracles](lessons/tui/table-default-retargets-card-oracles.md) — tui/table-default-retargets-card-oracles — table-first default; card TestBackend oracles run after `t`
-- [paragraph-bg-punches-block-fill](lessons/tui/paragraph-bg-punches-block-fill.md) — tui/paragraph-bg-punches-block-fill — selected table `Paragraph` cells must set `.bg` after a row Block fill
-- [table-reset-skips-session](lessons/tui/table-reset-skips-session.md) — tui/table-reset-skips-session — table reset is weekly/monthly only, never the 5h clock
-- [event-reader-retry-after-idle](lessons/tui/event-reader-retry-after-idle.md) — tui/event-reader-retry-after-idle — crossterm poll Err must retry; do not draw on mouse-move
+Read [LESSONS.md](LESSONS.md) for verified findings and [DECISIONS.md](DECISIONS.md) for consequential choices. Keep only current task-relevant pointers here; do not duplicate the detailed indexes.
 
 ## Patterns
 
@@ -41,3 +31,19 @@ _None yet._
 - Chat transcripts or daily logs (those belong in `daily/`)
 - Commands already in AGENTS.md
 - Unverified guesses
+
+Shared/repository choices: [DECISIONS.md](DECISIONS.md).
+
+<!-- agent-kit:repository-index:begin -->
+- [AGENTS.md](AGENTS.md)
+- [NOTES.md](NOTES.md)
+- [RUNBOOK.md](RUNBOOK.md)
+- [STEERS.md](STEERS.md)
+- [HISTORY.md](HISTORY.md)
+- [LESSONS.md](LESSONS.md)
+- [DECISIONS.md](DECISIONS.md)
+- [Daily evidence](daily/)
+- [Lesson files](lessons/)
+- [Patterns](patterns/)
+- [Templates](templates/)
+<!-- agent-kit:repository-index:end -->

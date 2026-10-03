@@ -3,7 +3,7 @@
 Read before structural changes. Agent-file growth: `docs/GROWTH.md` (do not restate).
 Agent-file shape (nested `AGENTS.md`, MEMORY caps, adapters): `tooling/agent-kit/check.sh`.
 
-No product tree and no stack (`detect-project`: unknown). Do not invent `src/`, `app/`, or domains. `AGENTS.md` command cells stay `n/a` until that command exists and has been run once.
+Product tree: `crates/` Cargo workspace, crate `crates/token-balance` (`detect-project`: Rust 2024). Keep the `crates/` stack convention; do not invent `src/`, `app/`, or domains. `AGENTS.md` command cells stay `n/a` until that command exists and has been run once.
 
 ## Always-on
 
@@ -58,6 +58,7 @@ First match wins. Unclassified staged files fail `[unclassified-path]`.
 | .gitignore | config |
 | .qualityignore | config |
 | .gitattributes | config |
+| **/.gitkeep | config |
 | .githooks/** | source |
 | tooling/** | source |
 | .opencode/** | source |

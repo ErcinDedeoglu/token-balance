@@ -7,6 +7,7 @@
 - Up: (root)
 - Down: `crates/AGENTS.md`
 - Down: `goals/AGENTS.md`
+- Down: `memory/AGENTS.md`
 
 ## Commands
 
@@ -46,6 +47,10 @@ These are gates, not suggestions. Git pre-commit, prepare-commit-msg, and the Op
 3. Non-obvious constraint → copy `memory/templates/lesson.md` to `memory/lessons/<domain>/`.
 4. Read `docs/GROWTH.md` before adding a root-level folder.
 5. Never write inside a git submodule — it is a foreign repo. See `docs/SUBMODULES.md`.
+
+<!-- agent-kit:execution:begin -->
+6. Before execution-heavy work, read `docs/EXECUTION.md`; on OpenCode load `pty-session` once. Quick checks stay foreground; long-running or uncertain jobs use notified sessions. Parallelize independent jobs; never detach or poll completion.
+<!-- agent-kit:execution:end -->
 
 ## Boundaries
 

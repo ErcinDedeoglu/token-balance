@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Regenerate docs/SUBMODULES.md from .gitmodules and scaffold a sidecar
-# directory per submodule at docs/submodules/<slug>/. Never writes inside a
+# directory per submodule at its committed mapped path. Never writes inside a
 # submodule.
 #
 # usage: submodules.sh [root] [--check] [--review <path>]
@@ -9,6 +9,7 @@
 #                    its current sha (records that a human/agent re-read it)
 
 set -euo pipefail
+export PYTHONDONTWRITEBYTECODE=1
 
 CHECK=0
 REVIEW=""
@@ -42,28 +43,28 @@ for cand in "$HERE" "$HERE/../assets" "$ROOT/tooling/agent-kit"; do
   [[ -f "$cand/submodule-notes.md" ]] && { TPL_DIR=$(cd "$cand" && pwd); break; }
 done
 
-SIDECAR_LAYOUT=${AGENT_KIT_SIDECAR_LAYOUT:-$(git -C "$ROOT" config --get agentkit.sidecarlayout 2>/dev/null || echo docs)}
+export PYTHONPATH="$HERE${PYTHONPATH:+:$PYTHONPATH}"
+if (( CHECK == 0 )) && [[ -z "$REVIEW" ]]; then
+  python3 "$HERE/knowledge_scaffold.py" "$ROOT"
+fi
 
-python3 - "$ROOT" "$CHECK" "$TPL_DIR" "$REVIEW" "$SIDECAR_LAYOUT" <<'PY'
+python3 - "$ROOT" "$CHECK" "$TPL_DIR" "$REVIEW" <<'PY'
 import re
 import subprocess
 import sys
 from pathlib import Path
+from knowledge_layout import Tree, resolve
 
 root = Path(sys.argv[1])
 check_only = sys.argv[2] == "1"
 tpl_dir = sys.argv[3]
 review = sys.argv[4]
-# Layout must match check-agent-kit.sh, or the generator and the gate disagree.
-#   docs   -> docs/submodules/<slug>/   (default)
-#   beside -> <submodule-path>.agent/   (recognise an existing convention)
-layout = sys.argv[5] if len(sys.argv) > 5 else "docs"
+# Generator, working checks and staged gates share one committed mapping.
+mapping = resolve(Tree(root))["sidecars"]
 
 
 def sidecar_dir(path):
-    if layout == "beside":
-        return root / (path.rstrip("/") + ".agent")
-    return root / "docs" / "submodules" / slug(path)
+    return root / mapping[path]
 
 BEGIN = "<!-- agent-kit:submodules:begin -->"
 END = "<!-- agent-kit:submodules:end -->"
@@ -175,6 +176,8 @@ if review:
         print(f"fail: {review} is not a submodule in .gitmodules")
         sys.exit(1)
     e = match[0]
+    if state_for(e)[1] == "uninit":
+        raise SystemExit("fail: cannot review an uninitialized submodule")
     code, head = git("rev-parse", "HEAD", cwd=root / e["path"])
     if code != 0:
         print(f"fail: cannot read HEAD of {e['path']} (initialize it first)")
@@ -272,7 +275,7 @@ if stale:
 else:
     print(f"current {register}")
 
-# Sidecar dirs: one per submodule, four files split by update trigger.
+# Original record templates; knowledge_scaffold owns the indexes and memory loop.
 if entries and tpl_dir:
     tdir = Path(tpl_dir)
     for e in entries:

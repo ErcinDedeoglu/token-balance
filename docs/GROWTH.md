@@ -90,6 +90,7 @@ The commit script decides. A product folder needs its own `AGENTS.md` when it ha
 Count only product entries. Do not count `AGENTS.md`, kit dirs (`docs/`, `memory/`, `openspec/`, `tooling/`), submodules, or generated dirs (`node_modules`, `dist`, `build`). A folder below 8 is covered by the nearest ancestor `AGENTS.md`. A deep folder at 8 is not excused because some parent already has a file.
 
 Every `AGENTS.md` has a `## Chain` section. Closest file still wins; the chain is how files find each other.
+Explicit documentation and mapped sidecar AGENTS files join the chain without making their records product crowding. Child-owned AGENTS files stay outside the superproject chain.
 
 ```text
 ## Chain
@@ -102,7 +103,7 @@ Every `AGENTS.md` has a `## Chain` section. Closest file still wins; the chain i
 - Down is one backtick path per chain child, or exactly `- Down: (none)`. No other lines.
 - A chain child is a folder that already has `AGENTS.md`, or a folder at the crowd threshold. Parent lists those children. Child points up. Extra or missing links fail the commit.
 
-`.githooks/commit-gates` runs the chain gate in the `prepare-commit-msg` phase, which `git commit --no-verify` cannot skip, and rejects a forgotten file, a broken up/down link, or a `CLAUDE.md` anywhere but the repo root. `repo-quality` gates are dispatched by the same file. Re-run repo-scaffold init on an existing repo so the script and the hooks are installed.
+`.githooks/commit-gates` runs the chain gate in the `prepare-commit-msg` phase, which `git commit --no-verify` cannot skip, and rejects a forgotten file, a broken up/down link, or a `CLAUDE.md` anywhere but the repo root. Quality gates are dispatched by the same file. Re-run repo-scaffold init on an existing repo so the script and the hooks are installed.
 <!-- agent-kit:chain:end -->
 
 ## Vendored growth — submodules
