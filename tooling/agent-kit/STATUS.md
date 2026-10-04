@@ -1,20 +1,17 @@
 # agent-kit STATUS
 
-- result: passed
+- result: failed
 - growth: vertical
-- added: 0
-- modified: 4
+- added: 1
+- modified: 1
 - deleted: 0
 - moved: 0
 
 ## added
-- (none)
+- `goals/GOAL-20261004-1147-CACHE.md` 755b3798e2c94a1c
 
 ## modified
-- `crates/token-balance/src/adapters/muse.rs` b90e36fa1561168b
-- `crates/token-balance/src/adapters/muse_test.rs` a428b11786acff8f
-- `memory/daily/2026-10-04.md` 8bedd3026085a43d
-- `quality/cohesion-reviews.json` 44a913a06b3ed790
+- `.gitignore` 7aede402c69792e8
 
 ## moved
 - (none)

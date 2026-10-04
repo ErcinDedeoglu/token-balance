@@ -11,3 +11,8 @@ build/
 .claude/settings.local.json
 .claude/agent-memory-local/
 .opencode/opencode-loop/
+*.goal-interview
+*.goal-fixture
+*.goal-fixture-bad
+*.goal-authoring/
+*.goal-authoring-review
