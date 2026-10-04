@@ -49,7 +49,7 @@ These are gates, not suggestions. Git pre-commit, prepare-commit-msg, and the Op
 5. Never write inside a git submodule — it is a foreign repo. See `docs/SUBMODULES.md`.
 
 <!-- agent-kit:execution:begin -->
-6. Before execution-heavy work, read `docs/EXECUTION.md`; on OpenCode load `pty-session` once. Quick checks stay foreground; long-running or uncertain jobs use notified sessions. Parallelize independent jobs; never detach or poll completion.
+6. Before execution-heavy work, read `docs/EXECUTION.md`; on OpenCode load `background-work` once. Quick checks stay foreground; long-running or uncertain jobs use background shells or subagents with explicit timeouts. Parallelize independent jobs; never detach or poll completion. Before an idle wait on a required job, pause an active goal as the last call and resume it on the completion notification.
 <!-- agent-kit:execution:end -->
 
 ## Boundaries

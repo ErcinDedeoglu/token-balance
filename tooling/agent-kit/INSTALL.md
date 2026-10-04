@@ -11,7 +11,7 @@ repo-scaffold owns this kit and the quality phase that codifies `docs/QUALITY.md
 
 What it is: an optional OpenCode integration that can reject some writes before the tool returns. It is not the commit gate.
 
-Choice: existing plugin refreshed automatically. The previous bytes were compared against the bundled asset: it was the older V1 function export with the same guards (submodule hard block, chain guard, after-check STEER) and no local customizations to port, so the transient backup was removed. V2 registers guards via ctx.tool.hook.
+Choice: existing plugin refreshed automatically; previous differing bytes retained in tooling/agent-kit/plugin-backups/ for customization review.
 File: present at .opencode/plugins/agent-kit.js
 plugin-activation: active
 opencode: opencode v2.0.22

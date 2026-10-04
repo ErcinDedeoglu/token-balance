@@ -3,7 +3,7 @@
     {
       "path": "AGENTS.md",
       "class": "root-agent-entry",
-      "sha256": "8173fc877e31444f7662c232a84de21a3a52f3faccb1dadbd9998cf277c92a08",
+      "sha256": "0077d83d10bde0192817a9d93887f24d86e04d42a4c6d5f152044fab13db4f38",
       "concern": "root operating-manual index",
       "rationale": "Always-loaded index of commands, pointers, MUST gates, boundaries, the memory loop, and Chain links. Splitting would scatter the entry file and force every session to reassemble it.",
       "kind": "keep-cohesive"
@@ -67,7 +67,7 @@
     {
       "path": "tooling/agent-kit/check.sh",
       "class": "source",
-      "sha256": "d3b1fef284b519fb3c955cd46370a238bad332fd448b9287e3b2ef79119957ac",
+      "sha256": "b63bc53e9cb8984ac28f951bc5ab8b46134e0690032b9d0777760d20cfc2de02",
       "concern": "deterministic agent-kit structure gate",
       "rationale": "One fail-closed checker for agent files: presence, caps, chain links, memory shape, submodule register and dirtiness. Splitting parser from checks would let a partial gate go green and stop matching the commit dispatcher.",
       "kind": "keep-cohesive"

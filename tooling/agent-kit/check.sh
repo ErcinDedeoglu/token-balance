@@ -139,10 +139,10 @@ if [[ -f "$ROOT/AGENTS.md" ]]; then
   else
     err "root AGENTS.md missing templates or GROWTH.md pointer"
   fi
-  if grep -q 'docs/EXECUTION.md' "$ROOT/AGENTS.md" && grep -q 'pty-session' "$ROOT/AGENTS.md"; then
-    ok "root AGENTS.md points at execution contract and pty-session"
+  if grep -q 'docs/EXECUTION.md' "$ROOT/AGENTS.md" && grep -q 'background-work' "$ROOT/AGENTS.md"; then
+    ok "root AGENTS.md points at execution contract and background-work"
   else
-    err "root AGENTS.md missing execution contract or pty-session trigger"
+    err "root AGENTS.md missing execution contract or background-work trigger"
   fi
 fi
 
