@@ -79,6 +79,14 @@
       "concern": "agent-kit chain and growth classification library",
       "rationale": "Shared primitives for crowd counting, chain parsing, kit-root detection, submodule pruning and ignore handling. Every kit gate imports these; splitting them would let the chain, growth and status tools disagree about what a product folder is.",
       "kind": "keep-cohesive"
+    },
+    {
+      "path": "crates/token-balance/src/adapters/muse.rs",
+      "class": "source",
+      "sha256": "b90e36fa1561168b83405e91e00c7870f14825bf92a7fddaf6b21348663b91fd",
+      "concern": "Muse (Model API) remaining adapter",
+      "rationale": "One vendor module: CLI/keychain token resolution, the Responses SSE remaining mapper, the 429 exhausted mapper, and the Provider impl. They share the Muse request/response contract; splitting token lookup from mapping would scatter one vendor's wire shape across files.",
+      "kind": "keep-cohesive"
     }
   ]
 }

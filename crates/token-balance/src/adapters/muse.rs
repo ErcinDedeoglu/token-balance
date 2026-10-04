@@ -213,16 +213,16 @@ pub fn map_muse_http(status: u16, text: &str) -> ProviderStatus {
 }
 
 fn map_muse_exhausted(text: &str) -> Option<ProviderStatus> {
+    // Meta's Responses API returns a structured JSON error on 429. Its exact
+    // shape varies: the recorded Muse body carried `error.resets_at`, while the
+    // OpenAI-style body only has `{"error":{"code":"rate_limit_exceeded",...}}`
+    // and no reset at all. Accept any JSON 429 body as the rate-limited /
+    // exhausted Everyday state instead of collapsing it to a dead token, and
+    // use a nested reset timestamp when the body provides one. A non-JSON body
+    // is not recognizable and stays a plain Error.
     let v: Value = serde_json::from_str(text.trim()).ok()?;
-    let err = v.get("error").unwrap_or(&v);
-    let resets = muse_resets(&err["resets_at"]).or_else(|| muse_resets(&v["resets_at"]));
-    let code = err.get("code").and_then(|x| x.as_str()).unwrap_or("");
-    let msg = err.get("message").and_then(|x| x.as_str()).unwrap_or("");
-    let low = msg.to_ascii_lowercase();
-    let exhausted = resets.is_some()
-        || (code == "rate_limit_exceeded" && low.contains("quota"))
-        || low.contains("quota exhausted");
-    exhausted.then(|| ProviderStatus::Available {
+    let resets = find_reset(&v);
+    Some(ProviderStatus::Available {
         plan: Some("Everyday".into()),
         windows: vec![QuotaWindow::from_used_percent(
             WindowLabel::FiveHour,
@@ -232,6 +232,21 @@ fn map_muse_exhausted(text: &str) -> Option<ProviderStatus> {
         )],
         extra: None,
     })
+}
+
+fn find_reset(v: &Value) -> Option<DateTime<Utc>> {
+    match v {
+        Value::Object(map) => map.iter().find_map(|(k, val)| {
+            let key = k.to_ascii_lowercase();
+            if key == "resets_at" || key == "reset_at" {
+                muse_resets(val)
+            } else {
+                find_reset(val)
+            }
+        }),
+        Value::Array(items) => items.iter().find_map(find_reset),
+        _ => None,
+    }
 }
 
 async fn post_responses(token: &str) -> Result<(u16, String), String> {
