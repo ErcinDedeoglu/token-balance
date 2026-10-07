@@ -1,3 +1,4 @@
+mod byteplus;
 mod claude;
 mod codex;
 mod codex_rpc;
@@ -14,6 +15,7 @@ mod muse;
 mod muse_web;
 mod zai;
 
+pub use byteplus::ByteplusAdapter;
 pub use claude::ClaudeAdapter;
 pub use codex::CodexAdapter;
 pub use copilot::CopilotAdapter;
@@ -104,6 +106,7 @@ fn adapter_from_row(creds: &Credentials, row: AccountRow) -> Arc<dyn Provider> {
         Vendor::Exa => Arc::new(ExaAdapter::from_account(creds, id, &row.pointer)),
         Vendor::Firecrawl => Arc::new(FirecrawlAdapter::from_account(creds, id, &row.pointer)),
         Vendor::LlmGateway => Arc::new(LlmGatewayAdapter::from_account(creds, id, &row.pointer)),
+        Vendor::Byteplus => Arc::new(ByteplusAdapter::from_account(creds, id, &row.pointer)),
     }
 }
 

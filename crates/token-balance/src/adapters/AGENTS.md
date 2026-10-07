@@ -16,3 +16,4 @@ Vendor HTTP fetchers. One module per vendor. Recorded JSON tests only; no live v
 - Never open Chrome or call chrome-mcp from adapters
 - Never poll Firecrawl `/scrape` for remaining; use `/v2/team/credit-usage` only
 - Never treat Muse HTTP 429 + `resets_at` as a dead token; it is exhausted Everyday
+- Never read BytePlus remaining from the `/api/v3` API key (no usage endpoint); use the console-cookie `GetCodingPlanUsage` with the `X-Csrf-Token` header

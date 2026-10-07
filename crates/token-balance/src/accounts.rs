@@ -89,6 +89,12 @@ pub const INIT_TEMPLATE: &str = "\
 # id = \"llmgateway\"
 # label = \"llm gateway\"
 # api_key_env = \"LLM_GATEWAY_API_KEY\"
+#
+# [[account]]
+# vendor = \"byteplus\"
+# id = \"byteplus\"
+# label = \"byteplus coding\"
+# credentials = \".config/token-balance/byteplus.json\"
 ";
 
 const INLINE_KEYS: &[&str] = &[
@@ -118,6 +124,7 @@ pub enum Vendor {
     Exa,
     Firecrawl,
     LlmGateway,
+    Byteplus,
 }
 
 impl Vendor {
@@ -137,6 +144,7 @@ impl Vendor {
             "exa" => Ok(Self::Exa),
             "firecrawl" => Ok(Self::Firecrawl),
             "llmgateway" => Ok(Self::LlmGateway),
+            "byteplus" => Ok(Self::Byteplus),
             other => Err(format!("unknown vendor '{other}'")),
         }
     }
@@ -157,6 +165,7 @@ impl Vendor {
             Self::Exa => "exa",
             Self::Firecrawl => "firecrawl",
             Self::LlmGateway => "llmgateway",
+            Self::Byteplus => "byteplus",
         }
     }
 }

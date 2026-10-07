@@ -91,7 +91,7 @@
     {
       "path": "crates/token-balance/src/accounts.rs",
       "class": "source",
-      "sha256": "49cfe50db5cad86c30318c160623849edfa8f9df672ccad476eb9a52fb672ef0",
+      "sha256": "78dc57877b7959028b7a8fc02f134b62f1eafbd3c6b4d8b5d683ee7c05295131",
       "concern": "accounts.toml registry: model, parser, and init template",
       "rationale": "One concern: the AccountRow/Vendor model, the toml parser and its validation (inline-key refusal, account cap, id/label uniqueness), and the commented init template the user edits. The template and the parser are the same contract; splitting them would let the visible template and the accepted schema drift apart.",
       "kind": "keep-cohesive"

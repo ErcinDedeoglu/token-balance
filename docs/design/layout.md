@@ -127,5 +127,6 @@ Default glyphs are **unique 1-column ASCII** so Claude and Codex cannot collide.
 | `exa` | `E` | `E` |
 | `firecrawl` | `N` | `N` |
 | `llmgateway` | `A` | `A` |
+| `byteplus` | `B` | `B` |
 
 v1 paints `glyph_ascii`. Unit test: every v1 id has a distinct `glyph_ascii`.
