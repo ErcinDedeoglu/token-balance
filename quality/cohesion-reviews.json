@@ -87,6 +87,14 @@
       "concern": "Muse (Model API) remaining adapter",
       "rationale": "One vendor module: CLI/keychain token resolution, the Responses SSE remaining mapper, the 429 exhausted mapper, and the Provider impl. They share the Muse request/response contract; splitting token lookup from mapping would scatter one vendor's wire shape across files.",
       "kind": "keep-cohesive"
+    },
+    {
+      "path": "crates/token-balance/src/accounts.rs",
+      "class": "source",
+      "sha256": "49cfe50db5cad86c30318c160623849edfa8f9df672ccad476eb9a52fb672ef0",
+      "concern": "accounts.toml registry: model, parser, and init template",
+      "rationale": "One concern: the AccountRow/Vendor model, the toml parser and its validation (inline-key refusal, account cap, id/label uniqueness), and the commented init template the user edits. The template and the parser are the same contract; splitting them would let the visible template and the accepted schema drift apart.",
+      "kind": "keep-cohesive"
     }
   ]
 }

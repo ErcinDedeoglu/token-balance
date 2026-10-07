@@ -83,6 +83,12 @@ pub const INIT_TEMPLATE: &str = "\
 # id = \"firecrawl\"
 # label = \"firecrawl\"
 # api_key_env = \"FIRECRAWL_API_KEY\"
+#
+# [[account]]
+# vendor = \"llmgateway\"
+# id = \"llmgateway\"
+# label = \"llm gateway\"
+# api_key_env = \"LLM_GATEWAY_API_KEY\"
 ";
 
 const INLINE_KEYS: &[&str] = &[
@@ -111,6 +117,7 @@ pub enum Vendor {
     Copilot,
     Exa,
     Firecrawl,
+    LlmGateway,
 }
 
 impl Vendor {
@@ -129,6 +136,7 @@ impl Vendor {
             "copilot" => Ok(Self::Copilot),
             "exa" => Ok(Self::Exa),
             "firecrawl" => Ok(Self::Firecrawl),
+            "llmgateway" => Ok(Self::LlmGateway),
             other => Err(format!("unknown vendor '{other}'")),
         }
     }
@@ -148,6 +156,7 @@ impl Vendor {
             Self::Copilot => "copilot",
             Self::Exa => "exa",
             Self::Firecrawl => "firecrawl",
+            Self::LlmGateway => "llmgateway",
         }
     }
 }

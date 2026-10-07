@@ -9,6 +9,7 @@ mod firecrawl;
 mod grok;
 mod kiro;
 mod kimi;
+mod llmgateway;
 mod muse;
 mod muse_web;
 mod zai;
@@ -23,6 +24,7 @@ pub use firecrawl::FirecrawlAdapter;
 pub use grok::GrokAdapter;
 pub use kiro::KiroAdapter;
 pub use kimi::KimiAdapter;
+pub use llmgateway::LlmGatewayAdapter;
 pub use muse::MuseAdapter;
 pub use muse_web::MuseWebAdapter;
 pub use zai::ZaiAdapter;
@@ -37,6 +39,8 @@ pub use codex::map_codex_rate_limits;
 pub use kiro::map_kiro_usage;
 #[cfg(test)]
 pub use kimi::{KIMI_USAGES_URL, map_kimi_usages};
+#[cfg(test)]
+pub use llmgateway::{LLMGATEWAY_KEY_URL, map_llmgateway_key};
 #[cfg(test)]
 pub use muse::{MUSE_RESPONSES_URL, map_muse_sse, token_from_keychain_blob};
 #[cfg(test)]
@@ -99,6 +103,7 @@ fn adapter_from_row(creds: &Credentials, row: AccountRow) -> Arc<dyn Provider> {
         Vendor::Copilot => Arc::new(CopilotAdapter::from_account(creds, id, &row.pointer)),
         Vendor::Exa => Arc::new(ExaAdapter::from_account(creds, id, &row.pointer)),
         Vendor::Firecrawl => Arc::new(FirecrawlAdapter::from_account(creds, id, &row.pointer)),
+        Vendor::LlmGateway => Arc::new(LlmGatewayAdapter::from_account(creds, id, &row.pointer)),
     }
 }
 

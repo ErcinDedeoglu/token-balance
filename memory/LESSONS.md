@@ -11,6 +11,7 @@ Include Pattern-Key, confidence, and an evidence pointer in each index entry.
 - [grok-omitted-percent-is-fresh-week](lessons/adapters/grok-omitted-percent-is-fresh-week.md) — adapters/grok-omitted-percent-is-fresh-week — omitted creditUsagePercent on a weekly period is 0% used
 - [exa-wreq-http1-checkpoint](lessons/adapters/exa-wreq-http1-checkpoint.md) — adapters/exa-wreq-http1-checkpoint — Exa remaining uses wreq Chrome131 HTTP/1; stock reqwest 429s Vercel
 - [muse-429-is-exhausted-everyday](lessons/adapters/muse-429-is-exhausted-everyday.md) — adapters/muse-429-is-exhausted-everyday — Muse 429 + resets_at is 0% Everyday, not a dead token
+- [llmgateway-devpass-key](lessons/adapters/llmgateway-devpass-key.md) — adapters/llmgateway-devpass-key — LLM Gateway remaining via `/v1/key`; decimal strings; `devPlan:"none"` has no plan window
 
 ## tui
 
